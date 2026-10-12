@@ -1,25 +1,40 @@
-import { Link, useParams } from "react-router";
+import { Link, useNavigate, useParams } from "react-router";
 
 import { useSession } from "@/core/auth/SessionProvider";
+import { describeError } from "@/core/http/apiError";
 import { formatDateTime } from "@/shared/format";
-import { Badge, PageHeader, Panel } from "@/shared/ui/primitives";
+import { useNotify } from "@/shared/ui/notifications";
+import { Badge, Button, PageHeader, Panel } from "@/shared/ui/primitives";
 import { Alert, QueryView } from "@/shared/ui/states";
 import { EditorialBadge, TrustBadge, VisibilityBadge } from "@/shared/ui/statusBadges";
 
 import { CardContentView } from "./CardContentView";
 import { CardGovernancePanel } from "./CardGovernancePanel";
-import { usePublishedCard } from "./hooks";
+import { useEditCard, usePublishedCard } from "./hooks";
 
 export function CardPage() {
   const assetId = Number(useParams().assetId);
   const card = usePublishedCard(assetId);
   const { permissions } = useSession();
+  const editCard = useEditCard(assetId);
+  const navigate = useNavigate();
+  const notify = useNotify();
+
+  const startEdit = () =>
+    editCard.mutate(undefined, {
+      onSuccess: ({ task_id, existing }) => {
+        if (existing) notify("info", "Já existe uma revisão em andamento para esta ficha. Continue por ela.");
+        void navigate(`/curadoria/${task_id}`);
+      },
+      onError: (error) => notify("danger", describeError(error)),
+    });
 
   return (
     <QueryView query={card} skeletonLines={8}>
       {(data) => {
         const canGovern = permissions.can("approve", data.content.domain);
         const canSeeMetadata = permissions.can("read_metadata", data.content.domain);
+        const canEdit = permissions.can("curate", data.content.domain) && data.editorial_status === "published";
         return (
           <>
             <PageHeader
@@ -73,6 +88,17 @@ export function CardPage() {
                     </p>
                   ) : null}
                 </Panel>
+                {canEdit ? (
+                  <Panel title="Corrigir esta ficha">
+                    <p className="small">
+                      Abre uma revisão com o conteúdo aprovado atual, sem gerar texto com IA. A nova revisão só é publicada depois
+                      de aprovada.
+                    </p>
+                    <Button onClick={startEdit} loading={editCard.isPending}>
+                      Editar ficha
+                    </Button>
+                  </Panel>
+                ) : null}
                 {canGovern ? <CardGovernancePanel card={data} /> : null}
               </div>
             </div>

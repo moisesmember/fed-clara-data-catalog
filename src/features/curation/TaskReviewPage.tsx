@@ -18,6 +18,7 @@ import { TaskStatusBadge } from "@/shared/ui/statusBadges";
 import { DraftView, EvidencePanel } from "./DraftView";
 import { usePublishTask, useRefreshTask, useStartTask, useSubmitReview, useTask } from "./hooks";
 import { ReviewPanel } from "./ReviewPanel";
+import { isCardEdit, taskKindLabel } from "./taskKinds";
 import "./curation.css";
 
 const OUTCOME_MESSAGES: Record<string, string> = {
@@ -61,7 +62,9 @@ function TaskReview({ task }: { task: TaskDetail }) {
 
   const canApprove = permissions.can("approve", task.domain);
   const reviewable = task.status === "awaiting_review" || task.status === "publication_blocked";
-  const startable = task.status === "open" || task.status === "failed";
+  const cardEdit = isCardEdit(task.kind);
+  // Edição de ficha é iniciada pelo próprio backend; só uma falha pede reinício manual.
+  const startable = cardEdit ? task.status === "failed" : task.status === "open" || task.status === "failed";
 
   const startCuration = () =>
     start.mutate(undefined, {
@@ -92,7 +95,7 @@ function TaskReview({ task }: { task: TaskDetail }) {
         subtitle={
           <span className="cluster">
             <Badge>{task.domain}</Badge>
-            <span>{task.kind === "new_asset" ? "Novo ativo" : task.kind === "change_review" ? "Mudança na origem" : "Mudança semântica"}</span>
+            <span>{taskKindLabel(task.kind)}</span>
             <span>· rodadas de revisão: {task.review_rounds}</span>
             <span>· regenerações: {task.regenerations}</span>
             {task.human_wait_ms ? <span>· espera humana acumulada: {formatDuration(task.human_wait_ms)}</span> : null}
@@ -148,12 +151,14 @@ function TaskReview({ task }: { task: TaskDetail }) {
             ) : reviewable ? (
               // A chave reinicia o formulário se a revisão, a situação ou o papel mudarem.
               <ReviewPanel key={`${task.draft_revision}-${task.status}-${canApprove}`} task={task} canApprove={canApprove} submitting={review.isPending || tracker.running} onSubmit={submitReview} />
+            ) : cardEdit && (task.status === "open" || task.status === "generating") ? (
+              <Alert tone="info">Preparando a edição: validando o conteúdo aprovado. Sem chamada à IA.</Alert>
             ) : (
               <Alert tone="info">Esta tarefa não aguarda revisão (situação: {task.status}).</Alert>
             )}
             {startable ? (
               <Button onClick={startCuration} loading={start.isPending || tracker.running}>
-                Gerar novo rascunho
+                {cardEdit ? "Retomar edição" : "Gerar novo rascunho"}
               </Button>
             ) : null}
             {task.status === "approved" && canApprove ? (

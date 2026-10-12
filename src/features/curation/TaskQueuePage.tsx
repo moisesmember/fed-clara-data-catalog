@@ -8,10 +8,10 @@ import { EmptyState, QueryView } from "@/shared/ui/states";
 import { TaskStatusBadge, taskStatusLabel } from "@/shared/ui/statusBadges";
 
 import { useTaskQueue } from "./hooks";
+import { taskKindLabel } from "./taskKinds";
 
 const PAGE_SIZE = 25;
 const STATUS_FILTERS: TaskStatus[] = ["awaiting_review", "open", "failed", "publication_blocked", "approved", "published", "rejected", "superseded"];
-const KIND_LABEL: Record<string, string> = { new_asset: "Novo ativo", change_review: "Mudança na origem", semantic_change: "Mudança semântica" };
 
 export function TaskQueuePage() {
   const [params, setParams] = useSearchParams();
@@ -87,7 +87,7 @@ export function TaskQueuePage() {
                               <code>{task.fqn}</code>
                             </Link>
                           </td>
-                          <td>{KIND_LABEL[task.kind] ?? task.kind}</td>
+                          <td>{taskKindLabel(task.kind)}</td>
                           <td>
                             <Badge>{task.domain}</Badge>
                           </td>

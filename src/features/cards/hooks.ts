@@ -9,6 +9,12 @@ export function usePublishedCard(assetId: number) {
   return useQuery({ queryKey: queryKeys.card(assetId), queryFn: () => discovery.card(assetId) });
 }
 
+/** Abre a edição da ficha (curadores). O backend devolve a tarefa nova ou a revisão já em andamento. */
+export function useEditCard(assetId: number) {
+  const { curation } = useServices();
+  return useMutation({ mutationFn: () => curation.editCard(assetId) });
+}
+
 /** Ações do aprovador. Mudanças de visibilidade/confiança invalidam ficha, busca e ativo. */
 export function useCardActions(assetId: number) {
   const { discovery } = useServices();

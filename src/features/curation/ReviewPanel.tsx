@@ -5,6 +5,7 @@ import { Button, Checkbox, Field, Panel, Select, TextArea, TextInput } from "@/s
 import { visibilityDescription, visibilityLabel } from "@/shared/ui/statusBadges";
 
 import { applyEdits, hasChanges, toForm, type DraftForm } from "./draftEdits";
+import { isCardEdit } from "./taskKinds";
 
 interface DecisionOption {
   value: ReviewDecision;
@@ -36,7 +37,8 @@ export function ReviewPanel({ task, canApprove, submitting, onSubmit }: ReviewPa
   const [owner, setOwner] = useState("");
   const [visibility, setVisibility] = useState<Visibility>("domain");
   const [limitationsNoneKnown, setLimitationsNoneKnown] = useState(false);
-  const [changeKind, setChangeKind] = useState<ChangeKind>("substantive");
+  // Edição de ficha costuma ser correção de texto: sugere "editorial" (o aprovador decide).
+  const [changeKind, setChangeKind] = useState<ChangeKind>(isCardEdit(task.kind) ? "editorial" : "substantive");
   const [publish, setPublish] = useState(true);
   const [notes, setNotes] = useState("");
 

@@ -5,6 +5,8 @@ import { queryKeys } from "@/api/queryKeys";
 import type { Page, ReviewSubmission } from "@/api/types";
 import { useServices } from "@/core/services";
 
+import { isCardEdit } from "./taskKinds";
+
 export function useTaskQueue(filters: TaskFilters, page: Page) {
   const { curation } = useServices();
   return useQuery({
@@ -16,7 +18,16 @@ export function useTaskQueue(filters: TaskFilters, page: Page) {
 
 export function useTask(taskId: number) {
   const { curation } = useServices();
-  return useQuery({ queryKey: queryKeys.task(taskId), queryFn: () => curation.get(taskId) });
+  return useQuery({
+    queryKey: queryKeys.task(taskId),
+    queryFn: () => curation.get(taskId),
+    // Enquanto o worker prepara o rascunho, acompanha a tarefa até ela aguardar revisão.
+    refetchInterval: (query) => {
+      const data = query.state.data;
+      const preparing = data?.status === "generating" || (data?.status === "open" && isCardEdit(data.kind));
+      return preparing ? 1500 : false;
+    },
+  });
 }
 
 export function useRefreshTask(taskId: number) {

@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import { FakeHttpClient } from "@/test/fakeHttpClient";
 import { card } from "@/test/fixtures";
@@ -14,6 +14,17 @@ describe("Ficha publicada", () => {
     expect(screen.getByText("Significado não documentado")).toBeInTheDocument();
     expect(screen.queryByText("Governança da ficha")).not.toBeInTheDocument();
     expect(screen.queryByText(/Ver metadados técnicos/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Editar ficha" })).not.toBeInTheDocument();
+  });
+
+  it("curador abre a edição da ficha e vai para a revisão", async () => {
+    const http = new FakeHttpClient({ "GET /cards/3": card, "POST /cards/3/edit": { task_id: 7, job_id: 91, existing: false } });
+    const user = userEvent.setup();
+    const { router } = renderApp({ path: "/fichas/3", subject: "carlos.curador", http });
+
+    await user.click(await screen.findByRole("button", { name: "Editar ficha" }));
+    expect(http.callsTo("POST", "/cards/3/edit")).toHaveLength(1);
+    await vi.waitFor(() => expect(router.state.location.pathname).toBe("/curadoria/7"));
   });
 
   it("aprovadora do domínio revoga visibilidade e a ficha é recarregada", async () => {

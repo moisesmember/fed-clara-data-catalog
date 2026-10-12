@@ -18,6 +18,12 @@ function curationHttp(overrides: Record<string, unknown> = {}) {
 }
 
 describe("Revisão de curadoria", () => {
+  it("edição de ficha sugere mudança editorial, que preserva o selo", async () => {
+    renderApp({ path: "/curadoria/7", subject: "bia.aprovadora", http: curationHttp({ "GET /curation/tasks/7": { ...task, kind: "editorial_edit" } }) });
+    expect(await screen.findByText("Edição de ficha")).toBeInTheDocument();
+    expect(screen.getByLabelText("Tipo de mudança")).toHaveValue("editorial");
+  });
+
   it("curador não vê aprovar/rejeitar; edição envia nova revisão com a versão exibida", async () => {
     const http = curationHttp({ "POST /curation/tasks/7/review": { job_id: 90, decision_id: "d1" } });
     const user = userEvent.setup();

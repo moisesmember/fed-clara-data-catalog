@@ -364,6 +364,13 @@ export interface JobAccepted {
   job_id: number;
 }
 
+/** Edição de ficha: `existing` indica que já havia revisão em andamento (sem novo job). */
+export interface CardEditAccepted {
+  task_id: number;
+  job_id: number | null;
+  existing: boolean;
+}
+
 export interface Job {
   id: number;
   kind: string;

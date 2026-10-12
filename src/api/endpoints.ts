@@ -13,6 +13,7 @@ export const endpoints = {
   cardVisibility: { method: "POST", path: "/cards/{asset_id}/visibility" },
   cardTrust: { method: "POST", path: "/cards/{asset_id}/trust" },
   cardRetire: { method: "POST", path: "/cards/{asset_id}/retire" },
+  cardEdit: { method: "POST", path: "/cards/{asset_id}/edit" },
   tasks: { method: "GET", path: "/curation/tasks" },
   task: { method: "GET", path: "/curation/tasks/{task_id}" },
   taskStart: { method: "POST", path: "/curation/tasks/{task_id}/start" },

@@ -2,7 +2,7 @@ import type { HttpClient } from "@/core/http/httpClient";
 
 import { endpoints } from "./endpoints";
 import { callEndpoint } from "./request";
-import type { JobAccepted, Page, ReviewAccepted, ReviewSubmission, TaskDetail, TaskStatus, TaskSummary } from "./types";
+import type { CardEditAccepted, JobAccepted, Page, ReviewAccepted, ReviewSubmission, TaskDetail, TaskStatus, TaskSummary } from "./types";
 
 export interface TaskFilters {
   status?: TaskStatus | "";
@@ -16,6 +16,8 @@ export interface CurationApi {
   start(taskId: number): Promise<JobAccepted>;
   review(taskId: number, submission: ReviewSubmission): Promise<ReviewAccepted>;
   publish(taskId: number): Promise<{ publication_id: number }>;
+  /** Abre a edição de uma ficha publicada a partir do conteúdo aprovado (sem IA). */
+  editCard(assetId: number): Promise<CardEditAccepted>;
 }
 
 export function createCurationApi(http: HttpClient): CurationApi {
@@ -28,5 +30,6 @@ export function createCurationApi(http: HttpClient): CurationApi {
     start: (taskId) => callEndpoint(http, endpoints.taskStart, { task_id: taskId }),
     review: (taskId, submission) => callEndpoint(http, endpoints.taskReview, { task_id: taskId }, { json: submission }),
     publish: (taskId) => callEndpoint(http, endpoints.taskPublish, { task_id: taskId }),
+    editCard: (assetId) => callEndpoint(http, endpoints.cardEdit, { asset_id: assetId }),
   };
 }
