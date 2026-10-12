@@ -1,0 +1,19 @@
+name: clara-frontend
+
+# Projeto independente do backend. Conecta-se à rede criada pelo `docker compose` do
+# clara-data-catalog (padrão: clara_default) e fala com o serviço `api` por ela.
+services:
+  web:
+    build: .
+    image: clara-frontend:local
+    environment:
+      CLARA_API_UPSTREAM: ${CLARA_API_UPSTREAM:-http://api:8000}
+    ports:
+      - "127.0.0.1:${CLARA_WEB_PORT:-3000}:8080"
+    networks:
+      - clara
+
+networks:
+  clara:
+    external: true
+    name: ${CLARA_BACKEND_NETWORK:-clara_default}

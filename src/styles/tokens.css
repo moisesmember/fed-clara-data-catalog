@@ -1,0 +1,88 @@
+/* Design tokens. Tema claro por padrão; escuro segue a preferência do sistema. */
+:root {
+  --font-sans: "Inter", "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "JetBrains Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 24px;
+  --space-6: 32px;
+  --space-7: 48px;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --text-xs: 0.75rem;
+  --text-sm: 0.875rem;
+  --text-md: 1rem;
+  --text-lg: 1.125rem;
+  --text-xl: 1.375rem;
+  --text-2xl: 1.75rem;
+
+  --bg: #f6f7fb;
+  --surface: #ffffff;
+  --surface-2: #f1f3f9;
+  --border: #e2e5ee;
+  --border-strong: #c9cedc;
+  --text: #1b1f2a;
+  --text-muted: #5b6275;
+  --text-subtle: #7d8496;
+
+  --accent: #3b5bdb;
+  --accent-hover: #2f4ac0;
+  --accent-soft: #e8edff;
+  --accent-text: #ffffff;
+
+  --success: #2b8a3e;
+  --success-soft: #e6f6ea;
+  --warning: #a35c00;
+  --warning-soft: #fff2db;
+  --danger: #c92a2a;
+  --danger-soft: #ffe8e8;
+  --info: #1c7ed6;
+  --info-soft: #e5f2ff;
+  --neutral-soft: #eef0f5;
+
+  --focus-ring: 0 0 0 3px rgb(59 91 219 / 35%);
+  --shadow-sm: 0 1px 2px rgb(16 24 40 / 6%);
+  --shadow-md: 0 4px 16px rgb(16 24 40 / 8%);
+
+  --sidebar-width: 248px;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1218;
+    --surface: #171b24;
+    --surface-2: #1e2330;
+    --border: #2a3040;
+    --border-strong: #3a4256;
+    --text: #e7eaf2;
+    --text-muted: #a3aabb;
+    --text-subtle: #7e869a;
+
+    --accent: #7b93ff;
+    --accent-hover: #93a7ff;
+    --accent-soft: #232b4a;
+    --accent-text: #0f1218;
+
+    --success: #69db7c;
+    --success-soft: #16301d;
+    --warning: #ffc078;
+    --warning-soft: #3a2a12;
+    --danger: #ff8787;
+    --danger-soft: #3b1b1b;
+    --info: #74c0fc;
+    --info-soft: #14283b;
+    --neutral-soft: #232837;
+
+    --focus-ring: 0 0 0 3px rgb(123 147 255 / 40%);
+    --shadow-sm: 0 1px 2px rgb(0 0 0 / 40%);
+    --shadow-md: 0 6px 20px rgb(0 0 0 / 45%);
+    color-scheme: dark;
+  }
+}

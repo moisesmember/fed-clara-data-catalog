@@ -1,0 +1,91 @@
+import type { DraftContent, PublishedCard, TaskDetail } from "@/api/types";
+
+const unknown = (text = "") => ({ text, status: "unknown" as const, evidence_refs: [] });
+
+export const draftContent: DraftContent = {
+  business_name: { text: "Faturamento por item", status: "suggested", evidence_refs: [] },
+  business_description: { text: "Faturamento diário por nota fiscal emitida.", status: "supported", evidence_refs: ["E1"] },
+  domain: unknown(),
+  subject: { text: "Faturamento", status: "suggested", evidence_refs: [] },
+  synonyms: ["ft_faturamento"],
+  granularity: unknown("Granularidade não documentada."),
+  possible_uses: [],
+  limitations: [{ text: "Regras de cálculo não documentadas.", status: "suggested", evidence_refs: [] }],
+  personal_data_signals: [],
+  owner_questions: ["Quem é o responsável de negócio por este ativo?"],
+  column_notes: [{ column: "vl_liq", meaning: unknown("Significado não documentado.") }],
+  plain_language_summary: "Mostra o que foi faturado em cada nota fiscal.",
+  example_questions: ["quanto vendemos por nota?"],
+};
+
+export const task: TaskDetail = {
+  id: 7,
+  asset_id: 3,
+  asset_version_id: 11,
+  kind: "new_asset",
+  status: "awaiting_review",
+  domain: "financeiro",
+  draft_revision: 2,
+  regenerations: 0,
+  review_rounds: 0,
+  last_error: null,
+  human_wait_ms: 0,
+  draft: {
+    id: 5,
+    revision: 2,
+    origin: "ai",
+    content: draftContent,
+    issues: [],
+    evidence_map: { E1: 31 },
+    model: "fake-deterministic-v1",
+    prompt_version: "curation-v1",
+    contract_version: "curation-draft/1",
+  },
+  evidences: [{ id: 31, kind: "table_comment", ref: "lab_dw.vendas.ft_faturamento@v1", text: "Faturamento diário por nota fiscal emitida.", untrusted: true }],
+  open_pendencies: [],
+  decisions: [],
+};
+
+export const card: PublishedCard = {
+  asset_id: 3,
+  editorial_status: "published",
+  trust_status: "not_validated",
+  trust_notes: null,
+  visibility: "domain",
+  review_required: false,
+  publication_revision: 1,
+  asset_version: 1,
+  published_at: "2026-10-12T02:45:10Z",
+  content: {
+    fqn: "lab_dw.vendas.ft_faturamento",
+    object_type: "TABLE",
+    source_id: "lab-dw",
+    domain: "financeiro",
+    owner: "gerencia.comercial",
+    asset_version_no: 1,
+    business_name: "Faturamento por item",
+    business_description: "Faturamento diário por nota fiscal emitida.",
+    subject: "Faturamento",
+    synonyms: ["faturamento"],
+    granularity: { text: "Uma linha por item de nota fiscal", status: "supported" },
+    possible_uses: [],
+    limitations: ["vl_liq sem definição documentada."],
+    personal_data_signals: [],
+    columns: [{ name: "vl_liq", data_type: "DECIMAL(18,2)", meaning: null, meaning_status: "unknown" }],
+  },
+};
+
+export const assetDetail = {
+  id: 3,
+  source_id: "lab-dw",
+  identity_key: "ns|lab_dw|vendas|ft_faturamento",
+  fqn: "lab_dw.vendas.ft_faturamento",
+  object_type: "TABLE",
+  domain: "financeiro",
+  status: "active",
+  missing_runs: 0,
+  current_version: { id: 11, version_no: 1, content_hash: "abc", collected_at: "2026-10-12T02:00:00Z" },
+  card: null,
+  open_pendencies: [],
+  latest_task: { id: 7, status: "awaiting_review", kind: "new_asset" },
+};
