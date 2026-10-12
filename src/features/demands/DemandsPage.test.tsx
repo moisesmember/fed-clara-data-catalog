@@ -62,3 +62,34 @@ describe("Demandas dos usuários (curadoria)", () => {
     expect(http.callsTo("DELETE", "/glossary/1")).toHaveLength(1);
   });
 });
+
+describe("Sugestões de termos pela IA", () => {
+  const suggestion = {
+    id: 4, domain: "financeiro", term: "dinheiro das vendas", expansions: ["faturamento"], rationale: "Leva à ficha K1.", demand: 2,
+    status: "pending", model: "claude", prompt_version: "glossary-v1", created_at: "2026-10-12T03:00:00Z", decided_by: null, decided_at: null,
+  };
+
+  it("curador aceita com edição (só o que mudou vai ao backend) ou rejeita", async () => {
+    const http = new FakeHttpClient({
+      "GET /glossary/suggestions": [suggestion, { ...suggestion, id: 5, term: "quanto faturamos", demand: 0 }],
+      "POST /glossary/suggestions/4/accept": { glossary_term_id: 31 },
+      "POST /glossary/suggestions/5/reject": { ok: true },
+    });
+    const user = userEvent.setup();
+    renderApp({ path: "/curadoria/demandas?aba=sugestoes", subject: "carlos.curador", http });
+
+    const expansions = await screen.findByLabelText("Buscar também por 4");
+    expect(screen.getByText("2 procura(s)")).toBeInTheDocument();
+    await user.clear(expansions);
+    await user.type(expansions, "faturamento, nota fiscal");
+    const item = expansions.closest("li") as HTMLElement;
+    await user.click(within(item).getByRole("button", { name: "Aceitar" }));
+    expect(await screen.findByText("“dinheiro das vendas” agora também busca por faturamento, nota fiscal.")).toBeInTheDocument();
+    expect(http.callsTo("POST", "/glossary/suggestions/4/accept")[0]?.options.json).toEqual({ expansions: ["faturamento", "nota fiscal"] });
+    expect(http.callsTo("GET", "/glossary/suggestions")[0]?.options.query).toEqual({ status: "pending" });
+
+    const other = (screen.getByLabelText("Buscar também por 5")).closest("li") as HTMLElement;
+    await user.click(within(other).getByRole("button", { name: "Rejeitar" }));
+    expect(await screen.findByText("Sugestão “quanto faturamos” rejeitada.")).toBeInTheDocument();
+  });
+});

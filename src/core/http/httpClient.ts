@@ -13,6 +13,7 @@ export interface RequestOptions {
 export interface HttpClient {
   get<T>(path: string, options?: RequestOptions): Promise<T>;
   post<T>(path: string, options?: RequestOptions): Promise<T>;
+  patch<T>(path: string, options?: RequestOptions): Promise<T>;
   delete<T>(path: string, options?: RequestOptions): Promise<T>;
 }
 

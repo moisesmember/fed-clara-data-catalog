@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { endpoints } from "./endpoints";
-import { CHANGE_KINDS, CLAIM_STATUSES, REVIEW_DECISIONS, TRUST_STATUSES, VISIBILITIES } from "./types";
+import { AUTH_METHODS, CHANGE_KINDS, CLAIM_STATUSES, REVIEW_DECISIONS, SOURCE_ENVIRONMENTS, SOURCE_KINDS, TRUST_STATUSES, VISIBILITIES } from "./types";
 
 const apiUrl = process.env.CLARA_API_URL;
 
@@ -35,6 +35,15 @@ describe.skipIf(!apiUrl)("contrato com o backend (openapi.json)", () => {
     expect([...REVIEW_DECISIONS].sort()).toEqual([...(schemas.ReviewDecision?.enum ?? [])].sort());
     expect([...CHANGE_KINDS].sort()).toEqual([...(schemas.ChangeKind?.enum ?? [])].sort());
     expect([...CLAIM_STATUSES].sort()).toEqual([...(schemas.ClaimStatus?.enum ?? [])].sort());
+    expect([...SOURCE_ENVIRONMENTS].sort()).toEqual([...(schemas.SourceEnvironment?.enum ?? [])].sort());
+    expect([...SOURCE_KINDS].sort()).toEqual([...(schemas.SourceKind?.enum ?? [])].sort());
+    expect([...AUTH_METHODS].sort()).toEqual([...(schemas.AuthMethod?.enum ?? [])].sort());
+  });
+
+  it("campos enviados no cadastro de fonte existem em SourceConfig", async () => {
+    const props = Object.keys((await load()).components.schemas.SourceConfig?.properties ?? {});
+    const sent = ["id", "name", "environment", "kind", "host", "http_path", "auth_method", "credential_ref", "scopes", "schedule_time", "owner"];
+    expect(sent.filter((field) => !props.includes(field))).toEqual([]);
   });
 
   it("campos enviados na revisão existem em ReviewSubmission", async () => {

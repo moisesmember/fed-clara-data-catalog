@@ -10,9 +10,11 @@ import { EmptyState, QueryView } from "@/shared/ui/states";
 
 import { GlossaryForm } from "./GlossaryForm";
 import { useDeleteTerm, useGlossary, useHelpRequests, useResolveHelp, useUnanswered } from "./hooks";
+import { SuggestionsTab } from "./SuggestionsTab";
 import "./demands.css";
 
-type Tab = "perguntas" | "ajuda" | "glossario";
+type Tab = "perguntas" | "ajuda" | "glossario" | "sugestoes";
+const TABS: readonly Tab[] = ["perguntas", "ajuda", "glossario", "sugestoes"];
 
 const KIND_LABEL: Record<string, [string, "neutral" | "warning" | "info" | "danger"]> = {
   search_no_results: ["Busca sem resultado", "warning"],
@@ -26,7 +28,7 @@ const KIND_LABEL: Record<string, [string, "neutral" | "warning" | "info" | "dang
 export function DemandsPage() {
   const [params, setParams] = useSearchParams();
   const tabParam = params.get("aba");
-  const tab: Tab = tabParam === "ajuda" || tabParam === "glossario" ? tabParam : "perguntas";
+  const tab: Tab = TABS.find((value) => value === tabParam) ?? "perguntas";
   return (
     <>
       <PageHeader
@@ -42,9 +44,10 @@ export function DemandsPage() {
           { value: "perguntas", label: "Perguntas sem resposta" },
           { value: "ajuda", label: "Pedidos de ajuda" },
           { value: "glossario", label: "Glossário" },
+          { value: "sugestoes", label: "Sugestões da IA" },
         ]}
       />
-      {tab === "perguntas" ? <UnansweredTab /> : tab === "ajuda" ? <HelpTab /> : <GlossaryTab />}
+      {tab === "perguntas" ? <UnansweredTab /> : tab === "ajuda" ? <HelpTab /> : tab === "glossario" ? <GlossaryTab /> : <SuggestionsTab />}
     </>
   );
 }

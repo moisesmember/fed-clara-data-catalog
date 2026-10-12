@@ -306,10 +306,35 @@ export interface AssetVersionDetail {
 }
 
 // ---------- Fontes ----------
+export const SOURCE_ENVIRONMENTS = ["lab", "dev", "prod"] as const;
+export type SourceEnvironment = (typeof SOURCE_ENVIRONMENTS)[number];
+
+export const SOURCE_KINDS = ["databricks_sql", "file"] as const;
+export type SourceKind = (typeof SOURCE_KINDS)[number];
+
+export const AUTH_METHODS = ["oauth_m2m", "pat", "none"] as const;
+export type AuthMethod = (typeof AUTH_METHODS)[number];
+
 export interface ScopeConfig {
   catalog: string;
   schema: string;
   domain: string;
+}
+
+/** Corpo de `POST /sources` (`SourceConfig`). O mesmo `id` substitui a configuração existente. */
+export interface SourceInput {
+  id: string;
+  name: string;
+  environment: SourceEnvironment;
+  kind: SourceKind;
+  host?: string;
+  http_path?: string;
+  auth_method: AuthMethod;
+  /** Referência ao segredo (ex.: `env:DBX_VENDAS`), nunca o segredo. */
+  credential_ref?: string;
+  scopes: ScopeConfig[];
+  schedule_time?: string;
+  owner: string;
 }
 
 export interface CapabilityStep {
@@ -343,6 +368,33 @@ export interface SourceSummary {
   status: "active" | "paused" | "error";
   metastore_id: string | null;
   last_capability_check: CapabilityReport | null;
+}
+
+/** Escopo configurado ou visto pela última descoberta na origem.
+ *  `visible`: true = a credencial vê; false = configurado, mas não visto; null = catálogo fora da descoberta. */
+export interface AvailableScope {
+  scope: string;
+  catalog: string;
+  schema: string;
+  tables: number | null;
+  configured: boolean;
+  domain: string | null;
+  visible: boolean | null;
+}
+
+export interface ScopesOverview {
+  source_id: string;
+  discovered_at: string | null;
+  discovery_truncated: boolean;
+  discovery_errors: { catalog: string; error: string }[];
+  scopes: AvailableScope[];
+}
+
+export interface ScopeAdded {
+  scope: string;
+  domain: string;
+  sync_job_id: number | null;
+  note: string | null;
 }
 
 export interface SyncRun {
@@ -450,6 +502,24 @@ export interface GlossaryTerm {
   created_by: string;
   updated_at: string;
   can_manage: boolean;
+}
+
+export type SuggestionStatus = "pending" | "accepted" | "rejected" | "expired";
+
+/** Termo proposto pela IA a partir só do conteúdo publicado; vale depois que um curador aceita. */
+export interface GlossarySuggestion {
+  id: number;
+  domain: string;
+  term: string;
+  expansions: string[];
+  rationale: string;
+  demand: number;
+  status: SuggestionStatus;
+  model: string;
+  prompt_version: string;
+  created_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
 }
 
 export interface UnansweredQuery {

@@ -15,6 +15,8 @@ export function callEndpoint<T>(
       return http.get<T>(path, options);
     case "POST":
       return http.post<T>(path, options);
+    case "PATCH":
+      return http.patch<T>(path, options);
     case "DELETE":
       return http.delete<T>(path, options);
   }

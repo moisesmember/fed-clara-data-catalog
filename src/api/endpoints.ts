@@ -1,7 +1,7 @@
 /** Catálogo único dos endpoints consumidos. Os serviços usam estes templates e o teste de
  *  contrato verifica cada um contra o `openapi.json` do backend. */
 export interface Endpoint {
-  method: "GET" | "POST" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
 }
 
@@ -25,10 +25,17 @@ export const endpoints = {
   assetVersion: { method: "GET", path: "/assets/{asset_id}/versions/{version_no}" },
   assetSemanticChange: { method: "POST", path: "/assets/{asset_id}/semantic-change" },
   sources: { method: "GET", path: "/sources" },
+  sourceUpsert: { method: "POST", path: "/sources" },
   sourceTest: { method: "POST", path: "/sources/{source_id}/test" },
   sourceSync: { method: "POST", path: "/sources/{source_id}/syncs" },
   sourceImport: { method: "POST", path: "/sources/{source_id}/imports" },
   sourceSyncRuns: { method: "GET", path: "/sources/{source_id}/sync-runs" },
+  // Escopos um a um e descoberta na origem (ADR 0012 do backend).
+  sourceScopes: { method: "GET", path: "/sources/{source_id}/scopes" },
+  sourceScopeAdd: { method: "POST", path: "/sources/{source_id}/scopes" },
+  sourceScopeDomain: { method: "PATCH", path: "/sources/{source_id}/scopes/{scope}" },
+  sourceScopeRemove: { method: "DELETE", path: "/sources/{source_id}/scopes/{scope}" },
+  sourceDiscover: { method: "POST", path: "/sources/{source_id}/discover" },
   job: { method: "GET", path: "/jobs/{job_id}" },
   jobCancel: { method: "POST", path: "/jobs/{job_id}/cancel" },
   audit: { method: "GET", path: "/audit" },
@@ -44,6 +51,10 @@ export const endpoints = {
   glossary: { method: "GET", path: "/glossary" },
   glossaryUpsert: { method: "POST", path: "/glossary" },
   glossaryDelete: { method: "DELETE", path: "/glossary/{term_id}" },
+  // Sugestões de termos pela IA, decididas por curadores (ADR 0011 do backend).
+  glossarySuggestions: { method: "GET", path: "/glossary/suggestions" },
+  glossarySuggestionAccept: { method: "POST", path: "/glossary/suggestions/{suggestion_id}/accept" },
+  glossarySuggestionReject: { method: "POST", path: "/glossary/suggestions/{suggestion_id}/reject" },
 } as const satisfies Record<string, Endpoint>;
 
 export type EndpointName = keyof typeof endpoints;

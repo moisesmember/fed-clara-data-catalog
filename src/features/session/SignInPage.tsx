@@ -14,6 +14,9 @@ const DEMO_USERS = [
   { subject: "carlos.curador", description: "Curador do domínio financeiro" },
   { subject: "bia.aprovadora", description: "Aprovadora do domínio financeiro" },
   { subject: "rui.rh", description: "Aprovador do domínio RH" },
+  { subject: "lucas.producao", description: "Consumidor do domínio produção" },
+  { subject: "carla.curadora", description: "Curadora do domínio produção" },
+  { subject: "paulo.aprovador", description: "Aprovador do domínio produção" },
   { subject: "ana.admin", description: "Administradora (fontes, operação)" },
 ];
 

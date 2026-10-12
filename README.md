@@ -28,7 +28,8 @@ Variáveis: `CLARA_WEB_PORT` (padrão 3000), `CLARA_BACKEND_NETWORK` (padrão `c
 criada pelo compose do backend) e `CLARA_API_UPSTREAM` (padrão `http://api:8000`).
 
 Entre com um usuário de demonstração do seed do backend (ex.: `joao.consumidor`, `carlos.curador`,
-`bia.aprovadora`, `ana.admin`). Os papéis vêm do backend (`role_bindings`), não do frontend.
+`bia.aprovadora`, `ana.admin`; no domínio produção, `carla.curadora`, `paulo.aprovador` e
+`lucas.producao`). Os papéis vêm do backend (`role_bindings`), não do frontend.
 
 ## Verificar
 
@@ -118,8 +119,9 @@ respondem 404, e a UI mostra uma mensagem neutra. O cache é descartado ao troca
 ## Limites atuais
 
 - Identidade de desenvolvimento apenas (sem OIDC/Entra ID).
-- Cadastro/edição de fontes ainda é feito pela API (`POST /sources`); a tela de fontes testa,
-  sincroniza e importa arquivos.
+- A tela de fontes cadastra fontes novas (com o primeiro escopo), gere escopos, testa, sincroniza e
+  importa arquivos. Editar conexão, credencial, agenda ou limites de uma fonte existente ainda é
+  pela API (`POST /sources` com o mesmo `id` substitui a configuração).
 - Edição de rascunho cobre os campos principais (nome, descrição, assunto, granularidade,
   sinônimos, limitações); significados de coluna são revisados pela regeneração ou pela API.
 - Sem testes ponta a ponta em navegador real (Playwright) — os testes de componentes usam jsdom.

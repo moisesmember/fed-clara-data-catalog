@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/api/queryKeys";
+import type { SuggestionStatus } from "@/api/types";
 import { useServices } from "@/core/services";
 
 export function useUnanswered(days: number) {
@@ -42,6 +43,24 @@ export function useDeleteTerm() {
   const { knowledge } = useServices();
   const invalidate = useGlossaryInvalidation();
   return useMutation({ mutationFn: (termId: number) => knowledge.deleteTerm(termId), onSuccess: invalidate });
+}
+
+export function useGlossarySuggestions(status: SuggestionStatus) {
+  const { knowledge } = useServices();
+  return useQuery({ queryKey: queryKeys.glossarySuggestions(status), queryFn: () => knowledge.suggestions(status) });
+}
+
+/** Aceitar cria um termo (afeta a busca); rejeitar só tira da fila. */
+export function useDecideSuggestion() {
+  const { knowledge } = useServices();
+  const invalidate = useGlossaryInvalidation();
+  return {
+    accept: useMutation({
+      mutationFn: ({ id, edits }: { id: number; edits?: { term?: string; expansions?: string[] } }) => knowledge.acceptSuggestion(id, edits),
+      onSuccess: invalidate,
+    }),
+    reject: useMutation({ mutationFn: (id: number) => knowledge.rejectSuggestion(id), onSuccess: invalidate }),
+  };
 }
 
 export function useResolveHelp() {

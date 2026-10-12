@@ -24,6 +24,10 @@ export class FetchHttpClient implements HttpClient {
     return this.request<T>("POST", path, options);
   }
 
+  patch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    return this.request<T>("PATCH", path, options);
+  }
+
   delete<T>(path: string, options: RequestOptions = {}): Promise<T> {
     return this.request<T>("DELETE", path, options);
   }

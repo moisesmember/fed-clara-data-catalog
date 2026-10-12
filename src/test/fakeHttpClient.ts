@@ -1,7 +1,7 @@
 import type { HttpClient, RequestOptions } from "@/core/http/httpClient";
 
 export interface RecordedCall {
-  method: "GET" | "POST" | "DELETE";
+  method: "GET" | "POST" | "PATCH" | "DELETE";
   path: string;
   options: RequestOptions;
 }
@@ -26,6 +26,10 @@ export class FakeHttpClient implements HttpClient {
 
   post<T>(path: string, options: RequestOptions = {}): Promise<T> {
     return this.handle<T>({ method: "POST", path, options });
+  }
+
+  patch<T>(path: string, options: RequestOptions = {}): Promise<T> {
+    return this.handle<T>({ method: "PATCH", path, options });
   }
 
   delete<T>(path: string, options: RequestOptions = {}): Promise<T> {

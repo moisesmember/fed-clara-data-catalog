@@ -8,12 +8,13 @@ import { formatDateTime, formatDuration } from "@/shared/format";
 import { JobStatusLine } from "@/shared/jobs/JobStatusLine";
 import { useJobTracker } from "@/shared/jobs/useJobTracker";
 import { useNotify } from "@/shared/ui/notifications";
-import { Badge, Button, Checkbox, Pagination, Panel } from "@/shared/ui/primitives";
+import { Badge, Button, Checkbox, Disclosure, Pagination, Panel } from "@/shared/ui/primitives";
 import { Alert, EmptyState, QueryView } from "@/shared/ui/states";
 import { jobStatusLabel } from "@/shared/ui/statusBadges";
 
 import { CapabilityChecklist } from "./CapabilityChecklist";
 import { useSourceActions, useSyncRuns } from "./hooks";
+import { ScopesManager } from "./ScopesManager";
 
 const STATUS_TONE = { active: "success", paused: "neutral", error: "danger" } as const;
 const STATUS_LABEL = { active: "Ativa", paused: "Pausada", error: "Com erro" } as const;
@@ -109,6 +110,10 @@ export function SourceCard({ source }: { source: SourceSummary }) {
           })}
           {isWarehouse ? <span className="xsmall muted">Nenhum selecionado = sincronizar todos os escopos.</span> : null}
         </fieldset>
+
+        <Disclosure summary="Gerenciar escopos (descobrir, incluir, remover)">
+          <ScopesManager source={source} busy={busy} onJob={(label, jobId) => setActiveJob({ id: jobId, label })} />
+        </Disclosure>
 
         <div className="cluster">
           {isWarehouse ? (

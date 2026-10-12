@@ -66,3 +66,24 @@
 .kpi__value {
   font-size: var(--text-xl);
 }
+.scope-form {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-3);
+  align-items: end;
+}
+.scopes-discover {
+  align-items: center;
+}
+.source-form {
+  border: 0;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+  align-items: start;
+}
+.source-form > legend {
+  margin-bottom: var(--space-2);
+}
