@@ -15,6 +15,8 @@ export interface AnswerViewProps {
   question: string;
   /** Escolha de uma opção de esclarecimento: refaz a pergunta já com o assunto escolhido. */
   onChoose?: (option: AnswerSuggestion) => void;
+  /** Mostra revisão/versão das fontes e as métricas da resposta (para quem lê metadados). */
+  technical?: boolean;
 }
 
 function ExpandedTerms({ terms }: { terms: string[] }) {
@@ -56,7 +58,7 @@ function SuggestionList({ suggestions, onChoose }: { suggestions: AnswerSuggesti
 }
 
 /** Resposta pensada para quem não é técnico: nunca termina num "não sei" sem caminho. */
-export function AnswerView({ response: raw, question, onChoose }: AnswerViewProps) {
+export function AnswerView({ response: raw, question, onChoose, technical = false }: AnswerViewProps) {
   // Campos da descoberta guiada podem faltar em respostas de versões anteriores da API.
   const response = { ...raw, suggestions: raw.suggestions ?? [], expanded_terms: raw.expanded_terms ?? [], degraded: raw.degraded ?? [] };
   if (response.status === "clarify") {
@@ -121,9 +123,11 @@ export function AnswerView({ response: raw, question, onChoose }: AnswerViewProp
                 <Link to={`/fichas/${citation.asset_id}`} className="citation">
                   <span className="citation__id">{citation.context_id}</span>
                   <code>{citation.fqn}</code>
-                  <span className="muted xsmall">
-                    r{citation.publication_revision} · v{citation.asset_version}
-                  </span>
+                  {technical ? (
+                    <span className="muted xsmall">
+                      r{citation.publication_revision} · v{citation.asset_version}
+                    </span>
+                  ) : null}
                   <TrustBadge status={citation.trust_status} />
                 </Link>
               </li>
@@ -132,10 +136,12 @@ export function AnswerView({ response: raw, question, onChoose }: AnswerViewProp
         </div>
       ) : null}
       <FeedbackBar question={question} mode={response.mode} />
-      <p className="xsmall muted">
-        {response.metrics.docs_retrieved} trecho(s) consultado(s) · {formatDuration(response.metrics.wall_ms)} · busca{" "}
-        {response.mode === "hybrid" ? "por palavras e significado" : "por palavras"}
-      </p>
+      {technical ? (
+        <p className="xsmall muted">
+          {response.metrics.docs_retrieved} trecho(s) consultado(s) · {formatDuration(response.metrics.wall_ms)} · busca{" "}
+          {response.mode === "hybrid" ? "por palavras e significado" : "por palavras"}
+        </p>
+      ) : null}
     </article>
   );
 }

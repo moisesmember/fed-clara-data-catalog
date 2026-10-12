@@ -52,6 +52,16 @@ export function Panel({ title, actions, children, className }: { title?: ReactNo
   );
 }
 
+/** Bloco recolhível (`<details>`) para informação secundária, como detalhes técnicos. */
+export function Disclosure({ summary, open, children }: { summary: ReactNode; open?: boolean; children: ReactNode }) {
+  return (
+    <details className="ui-disclosure" open={open}>
+      <summary className="ui-disclosure__summary">{summary}</summary>
+      <div className="ui-disclosure__body">{children}</div>
+    </details>
+  );
+}
+
 /** Campo com rótulo, dica e erro associados ao controle (aria-describedby). */
 export function Field({
   label,

@@ -4,9 +4,9 @@ import { useSession } from "@/core/auth/SessionProvider";
 import { describeError } from "@/core/http/apiError";
 import { formatDateTime } from "@/shared/format";
 import { useNotify } from "@/shared/ui/notifications";
-import { Badge, Button, PageHeader, Panel } from "@/shared/ui/primitives";
+import { Badge, Button, Disclosure, PageHeader, Panel } from "@/shared/ui/primitives";
 import { Alert, QueryView } from "@/shared/ui/states";
-import { EditorialBadge, TrustBadge, VisibilityBadge } from "@/shared/ui/statusBadges";
+import { EditorialBadge, TrustBadge, VisibilityBadge, trustDescription, visibilityDescription } from "@/shared/ui/statusBadges";
 
 import { CardContentView } from "./CardContentView";
 import { CardGovernancePanel } from "./CardGovernancePanel";
@@ -40,53 +40,70 @@ export function CardPage() {
             <PageHeader
               eyebrow={`Ficha · domínio ${data.content.domain}`}
               title={data.content.business_name}
-              subtitle={<code>{data.content.fqn}</code>}
+              subtitle={canSeeMetadata ? <code>{data.content.fqn}</code> : undefined}
               actions={
                 <>
-                  <EditorialBadge status={data.editorial_status} />
+                  {canSeeMetadata ? <EditorialBadge status={data.editorial_status} /> : null}
                   <TrustBadge status={data.trust_status} />
                   <VisibilityBadge visibility={data.visibility} />
                 </>
               }
             />
+            <dl className="ui-dl small">
+              <dt>Confiança</dt>
+              <dd>{trustDescription(data.trust_status)}</dd>
+              <dt>Quem pode ver</dt>
+              <dd>{visibilityDescription(data.visibility)}</dd>
+            </dl>
             {data.review_required ? (
               <Alert tone="warning">
-                A origem mudou depois desta publicação. O conteúdo abaixo foi aprovado para a versão técnica v{data.asset_version} e
-                está em revisão.
+                Os dados de origem mudaram depois desta publicação: parte do conteúdo abaixo pode estar desatualizada e já está em
+                revisão.{canSeeMetadata ? ` O conteúdo foi aprovado para a versão técnica v${data.asset_version}.` : ""}
               </Alert>
             ) : null}
             {data.trust_status !== "certified" ? (
               <Alert tone="info">Ficha não certificada: confirme com o responsável antes de tratá-la como fonte oficial.</Alert>
             ) : null}
             <div className="grid-2">
-              <CardContentView content={data.content} />
+              <CardContentView content={data.content} technical={canSeeMetadata} />
               <div className="stack">
                 <Panel title="Publicação">
-                  <dl className="ui-dl">
-                    <dt>Revisão</dt>
-                    <dd>r{data.publication_revision}</dd>
-                    <dt>Versão técnica</dt>
-                    <dd>v{data.asset_version}</dd>
-                    <dt>Publicada em</dt>
-                    <dd>{formatDateTime(data.published_at)}</dd>
-                    <dt>Fonte</dt>
-                    <dd>
-                      <Badge>{data.content.source_id}</Badge>
-                    </dd>
-                    <dt>Tipo</dt>
-                    <dd>{data.content.object_type}</dd>
-                    {data.trust_notes ? (
-                      <>
-                        <dt>Notas de confiança</dt>
-                        <dd>{data.trust_notes}</dd>
-                      </>
-                    ) : null}
-                  </dl>
-                  {canSeeMetadata ? (
-                    <p className="small" style={{ marginTop: "var(--space-4)" }}>
-                      <Link to={`/ativos/${data.asset_id}`}>Ver metadados técnicos e versões →</Link>
-                    </p>
-                  ) : null}
+                  <div className="stack">
+                    <dl className="ui-dl">
+                      <dt>Publicada em</dt>
+                      <dd>{formatDateTime(data.published_at)}</dd>
+                      {data.trust_notes ? (
+                        <>
+                          <dt>Notas de confiança</dt>
+                          <dd>{data.trust_notes}</dd>
+                        </>
+                      ) : null}
+                    </dl>
+                    {/* Aberto para quem trabalha com metadados; recolhido para quem só consulta. */}
+                    <Disclosure summary="Detalhes técnicos" open={canSeeMetadata}>
+                      <dl className="ui-dl">
+                        <dt>Nome técnico</dt>
+                        <dd>
+                          <code>{data.content.fqn}</code>
+                        </dd>
+                        <dt>Revisão</dt>
+                        <dd>r{data.publication_revision}</dd>
+                        <dt>Versão técnica</dt>
+                        <dd>v{data.asset_version}</dd>
+                        <dt>Fonte</dt>
+                        <dd>
+                          <Badge>{data.content.source_id}</Badge>
+                        </dd>
+                        <dt>Tipo</dt>
+                        <dd>{data.content.object_type}</dd>
+                      </dl>
+                      {canSeeMetadata ? (
+                        <p className="small" style={{ marginTop: "var(--space-4)" }}>
+                          <Link to={`/ativos/${data.asset_id}`}>Ver metadados técnicos e versões →</Link>
+                        </p>
+                      ) : null}
+                    </Disclosure>
+                  </div>
                 </Panel>
                 {canEdit ? (
                   <Panel title="Corrigir esta ficha">

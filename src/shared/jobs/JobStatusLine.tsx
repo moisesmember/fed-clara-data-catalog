@@ -26,7 +26,7 @@ export function JobStatusLine({ job, label }: { job: Job | undefined; label: str
         <span>{label}</span>
         <JobStatusBadge status={job.status} />
         <span className="muted xsmall">
-          job #{job.id} · tentativa {job.attempts}/{job.max_attempts}
+          processo #{job.id} · tentativa {job.attempts}/{job.max_attempts}
         </span>
         {active && !job.cancel_requested ? (
           <Button

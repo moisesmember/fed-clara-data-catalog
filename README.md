@@ -89,6 +89,9 @@ servidor e cache), TypeScript 5.9 estrito, Vite 7, Vitest 3 + Testing Library, E
 - **Glossário visível**: a busca diz o que entendeu ("Também procurei por: faturamento").
 - **Fichas em linguagem simples**: "Em poucas palavras" e "Perguntas que esta ficha ajuda a
   responder" aparecem antes dos detalhes técnicos.
+- **Sem jargão para quem só consulta**: nome técnico, revisões, versões e tipos de coluna ficam em
+  "Detalhes técnicos" (recolhido) para quem não lê metadados; confiança e visibilidade são
+  explicadas em texto visível, não só no tooltip.
 - **Corrigir sem IA**: curadores veem "Editar ficha" na ficha publicada; abre uma revisão com o
   conteúdo aprovado atual (sem gerar texto), que sugere mudança "editorial" para manter o selo.
 - **Ciclo de melhoria**: "Isso ajudou?" e pedidos de ajuda alimentam a tela **Demandas dos

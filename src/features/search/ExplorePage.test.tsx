@@ -43,6 +43,9 @@ describe("Explorar (busca)", () => {
     const item = result.closest("li") as HTMLElement;
     expect(within(item).getByText("Não validado")).toBeInTheDocument();
     expect(within(item).getByText("Revisão pendente")).toBeInTheDocument();
+    // Consumidor não vê nome técnico nem versões.
+    expect(within(item).queryByText(hit.fqn)).not.toBeInTheDocument();
+    expect(within(item).queryByText(/versão técnica/)).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Também procurei por: faturamento");
     expect(http.callsTo("GET", "/search")[0]?.options.query).toMatchObject({ q: "dinheiro que entrou", mode: "hybrid" });
   });

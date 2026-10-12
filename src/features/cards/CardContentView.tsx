@@ -2,8 +2,8 @@ import type { CardContent } from "@/api/types";
 import { Badge, Panel } from "@/shared/ui/primitives";
 import { ClaimBadge } from "@/shared/ui/statusBadges";
 
-/** Conteúdo de negócio de uma ficha publicada (somente leitura). */
-export function CardContentView({ content }: { content: CardContent }) {
+/** Conteúdo de negócio de uma ficha publicada (somente leitura). `technical` mostra os tipos das colunas. */
+export function CardContentView({ content, technical = false }: { content: CardContent; technical?: boolean }) {
   return (
     <div className="stack">
       {content.plain_language_summary || content.example_questions?.length ? (
@@ -25,7 +25,7 @@ export function CardContentView({ content }: { content: CardContent }) {
           <dl className="ui-dl">
             <dt>Assunto</dt>
             <dd>{content.subject || "—"}</dd>
-            <dt>Granularidade</dt>
+            <dt>Cada linha representa</dt>
             <dd className="cluster">
               <span>{content.granularity.text || "—"}</span>
               <ClaimBadge status={content.granularity.status} />
@@ -76,9 +76,9 @@ export function CardContentView({ content }: { content: CardContent }) {
             <thead>
               <tr>
                 <th scope="col">Coluna</th>
-                <th scope="col">Tipo</th>
+                {technical ? <th scope="col">Tipo</th> : null}
                 <th scope="col">Significado</th>
-                <th scope="col">Evidência</th>
+                <th scope="col">Confirmação</th>
               </tr>
             </thead>
             <tbody>
@@ -87,9 +87,11 @@ export function CardContentView({ content }: { content: CardContent }) {
                   <td>
                     <code>{column.name}</code>
                   </td>
-                  <td className="muted">
-                    <code>{column.data_type}</code>
-                  </td>
+                  {technical ? (
+                    <td className="muted">
+                      <code>{column.data_type}</code>
+                    </td>
+                  ) : null}
                   <td>{column.meaning ?? <span className="muted">Significado não documentado</span>}</td>
                   <td>
                     <ClaimBadge status={column.meaning_status} />

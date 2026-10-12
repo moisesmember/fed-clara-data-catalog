@@ -10,6 +10,7 @@ import { useJobTracker } from "@/shared/jobs/useJobTracker";
 import { useNotify } from "@/shared/ui/notifications";
 import { Badge, Button, Checkbox, Pagination, Panel } from "@/shared/ui/primitives";
 import { Alert, EmptyState, QueryView } from "@/shared/ui/states";
+import { jobStatusLabel } from "@/shared/ui/statusBadges";
 
 import { CapabilityChecklist } from "./CapabilityChecklist";
 import { useSourceActions, useSyncRuns } from "./hooks";
@@ -36,7 +37,7 @@ export function SourceCard({ source }: { source: SourceSummary }) {
       const coverage = typeof job.result?.coverage === "string" ? ` · cobertura ${job.result.coverage}` : "";
       notify("success", `${activeJob?.label ?? "Operação"} concluída${coverage}.`);
     } else {
-      notify("danger", `${activeJob?.label ?? "Operação"} terminou como “${job.status}”. ${job.last_error ?? ""}`);
+      notify("danger", `${activeJob?.label ?? "Operação"} terminou como “${jobStatusLabel(job.status)}”. ${job.last_error ?? ""}`);
     }
     setActiveJob(null);
   });

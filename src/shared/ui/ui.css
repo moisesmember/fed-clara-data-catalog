@@ -406,3 +406,22 @@
   font-size: var(--text-sm);
   color: var(--text-muted);
 }
+
+/* ---------- Bloco recolhível ---------- */
+.ui-disclosure {
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-3);
+}
+.ui-disclosure__summary {
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.ui-disclosure__summary:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+.ui-disclosure__body {
+  margin-top: var(--space-3);
+}

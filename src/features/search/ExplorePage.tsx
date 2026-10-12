@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 
 import type { AnswerSuggestion, SearchMode } from "@/api/types";
+import { useSession } from "@/core/auth/SessionProvider";
 import { Button, PageHeader, Panel, Segmented, Tabs, TextArea } from "@/shared/ui/primitives";
 import { ErrorState, Skeleton } from "@/shared/ui/states";
 
@@ -68,6 +69,7 @@ export function ExplorePage() {
 
 function SearchTab({ query, mode, onSubmit, onBrowse }: { query: string; mode: SearchMode; onSubmit: (query: string) => void; onBrowse: () => void }) {
   const search = useCatalogSearch(query, mode);
+  const technical = useSession().permissions.can("read_metadata");
   return (
     <div className="stack">
       <SearchBox initialValue={query} onSubmit={onSubmit} />
@@ -86,7 +88,7 @@ function SearchTab({ query, mode, onSubmit, onBrowse }: { query: string; mode: S
               Também procurei por: <strong>{(search.data.added_terms ?? []).join(", ")}</strong> (entendi “{search.data.expanded_terms.join("”, “")}”).
             </p>
           ) : null}
-          <SearchResults hits={search.data?.results ?? []} query={query} />
+          <SearchResults hits={search.data?.results ?? []} query={query} technical={technical} />
           {search.data && search.data.results.length === 0 ? (
             <div className="cluster">
               <RequestHelpButton question={query} />
@@ -106,6 +108,7 @@ function AskTab({ initialQuestion, mode }: { initialQuestion: string; mode: Sear
   const [asked, setAsked] = useState(initialQuestion);
   const ask = useAskQuestion();
   const browse = useCatalogBrowse();
+  const technical = useSession().permissions.can("read_metadata");
   const autoAsked = useRef(false);
   const examples = browse.data?.domains.flatMap((d) => d.example_questions).slice(0, 5) ?? [];
 
@@ -156,7 +159,7 @@ function AskTab({ initialQuestion, mode }: { initialQuestion: string; mode: Sear
         </form>
         {ask.isPending ? <Skeleton lines={4} /> : null}
         {ask.error ? <ErrorState error={ask.error} /> : null}
-        {ask.data && !ask.isPending ? <AnswerView response={ask.data} question={asked} onChoose={choose} /> : null}
+        {ask.data && !ask.isPending ? <AnswerView response={ask.data} question={asked} onChoose={choose} technical={technical} /> : null}
       </div>
       <Panel title="Como perguntar">
         <div className="stack-sm small">

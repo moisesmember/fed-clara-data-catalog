@@ -33,7 +33,7 @@ describe("Revisão de curadoria", () => {
     expect(screen.queryByRole("radio", { name: /Aprovar/ })).not.toBeInTheDocument();
     expect(screen.queryByRole("radio", { name: /Rejeitar/ })).not.toBeInTheDocument();
 
-    const granularity = screen.getByLabelText("Granularidade");
+    const granularity = screen.getByLabelText("Cada linha representa");
     await user.clear(granularity);
     await user.type(granularity, "Uma linha por item de nota fiscal");
     await user.click(screen.getByRole("button", { name: "Editar e revalidar" }));

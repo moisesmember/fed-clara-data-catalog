@@ -1,4 +1,4 @@
-import type { ClaimStatus, EditorialStatus, JobStatus, TaskStatus, TrustStatus, Visibility } from "@/api/types";
+import type { ClaimStatus, EditorialStatus, JobStatus, ReviewDecision, TaskStatus, TrustStatus, Visibility } from "@/api/types";
 
 import { Badge, type Tone } from "./primitives";
 
@@ -17,9 +17,9 @@ const EDITORIAL: Record<EditorialStatus, [string, Tone]> = {
 };
 
 const VISIBILITY: Record<Visibility, [string, Tone, string]> = {
-  internal: ["Interno", "neutral", "Visível a qualquer consumidor autenticado."],
-  domain: ["Domínio", "info", "Visível a quem tem papel no domínio do ativo."],
-  restricted: ["Restrito", "warning", "Visível só a leitores autorizados de conteúdo restrito do domínio."],
+  internal: ["Toda a empresa", "neutral", "Qualquer pessoa com acesso ao catálogo pode ver."],
+  domain: ["Só a área", "info", "Só quem trabalha com os dados desta área (domínio) pode ver."],
+  restricted: ["Restrito", "warning", "Só pessoas autorizadas a conteúdo restrito desta área podem ver."],
 };
 
 const TASK: Record<TaskStatus, [string, Tone]> = {
@@ -35,9 +35,9 @@ const TASK: Record<TaskStatus, [string, Tone]> = {
 };
 
 const CLAIM: Record<ClaimStatus, [string, Tone, string]> = {
-  supported: ["Sustentado", "success", "Afirmação apoiada por evidência citada."],
-  suggested: ["Sugestão", "warning", "Hipótese a confirmar com o responsável."],
-  unknown: ["Desconhecido", "neutral", "Sem informação suficiente na origem."],
+  supported: ["Confirmado na origem", "success", "Afirmação apoiada por evidência citada."],
+  suggested: ["A confirmar", "warning", "Hipótese a confirmar com o responsável."],
+  unknown: ["Sem informação", "neutral", "Sem informação suficiente na origem."],
 };
 
 const JOB: Record<JobStatus, [string, Tone]> = {
@@ -45,14 +45,24 @@ const JOB: Record<JobStatus, [string, Tone]> = {
   running: ["Em execução", "info"],
   succeeded: ["Concluído", "success"],
   failed: ["Falhou", "danger"],
-  dead: ["Esgotado", "danger"],
+  dead: ["Falhou após várias tentativas", "danger"],
   cancelled: ["Cancelado", "neutral"],
 };
 
+const DECISION: Record<ReviewDecision, string> = {
+  approve: "Aprovou",
+  request_changes: "Editou e pediu revalidação",
+  regenerate: "Pediu novo rascunho",
+  reject: "Rejeitou",
+};
+
 export const trustLabel = (status: TrustStatus) => TRUST[status][0];
+export const trustDescription = (status: TrustStatus) => TRUST[status][2];
 export const visibilityLabel = (visibility: Visibility) => VISIBILITY[visibility][0];
 export const visibilityDescription = (visibility: Visibility) => VISIBILITY[visibility][2];
-export const taskStatusLabel = (status: TaskStatus) => TASK[status][0];
+export const taskStatusLabel = (status: TaskStatus) => TASK[status]?.[0] ?? status;
+export const jobStatusLabel = (status: JobStatus) => JOB[status]?.[0] ?? status;
+export const decisionLabel = (decision: ReviewDecision) => DECISION[decision] ?? decision;
 
 export function TrustBadge({ status }: { status: TrustStatus }) {
   const [label, tone, title] = TRUST[status];

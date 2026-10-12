@@ -17,7 +17,7 @@ interface DecisionOption {
 const DECISIONS: DecisionOption[] = [
   { value: "approve", label: "Aprovar", description: "Aprova (com as edições abaixo, se houver) e publica.", needsApprover: true },
   { value: "request_changes", label: "Editar e revalidar", description: "Salva suas edições como nova revisão e valida de novo.", needsApprover: false },
-  { value: "regenerate", label: "Regenerar", description: "Pede um novo rascunho ao modelo, com suas notas como orientação.", needsApprover: false },
+  { value: "regenerate", label: "Pedir novo rascunho à IA", description: "Descarta este rascunho e gera outro, usando suas notas como orientação.", needsApprover: false },
   { value: "reject", label: "Rejeitar", description: "Encerra a tarefa sem publicar.", needsApprover: true },
 ];
 
@@ -104,7 +104,7 @@ export function ReviewPanel({ task, canApprove, submitting, onSubmit }: ReviewPa
             <Field label="Nome de negócio">{(props) => <TextInput {...props} value={form.businessName} onChange={(e) => update("businessName")(e.target.value)} />}</Field>
             <Field label="Descrição de negócio">{(props) => <TextArea {...props} value={form.businessDescription} onChange={(e) => update("businessDescription")(e.target.value)} rows={3} />}</Field>
             <Field label="Assunto">{(props) => <TextInput {...props} value={form.subject} onChange={(e) => update("subject")(e.target.value)} />}</Field>
-            <Field label="Granularidade" hint="Preencha só se comprovada (ex.: uma linha por item de nota fiscal).">
+            <Field label="Cada linha representa" hint="Granularidade. Preencha só se comprovada (ex.: um item de nota fiscal).">
               {(props) => <TextInput {...props} value={form.granularity} onChange={(e) => update("granularity")(e.target.value)} />}
             </Field>
             <Field label="Sinônimos" hint="Separados por vírgula.">{(props) => <TextInput {...props} value={form.synonyms} onChange={(e) => update("synonyms")(e.target.value)} />}</Field>
@@ -133,8 +133,8 @@ export function ReviewPanel({ task, canApprove, submitting, onSubmit }: ReviewPa
             <Field label="Tipo de mudança" hint="Correção editorial preserva o selo de confiança atual.">
               {(props) => (
                 <Select {...props} value={changeKind} onChange={(e) => setChangeKind(e.target.value as ChangeKind)}>
-                  <option value="substantive">Substantiva</option>
-                  <option value="editorial">Editorial</option>
+                  <option value="substantive">Substantiva (muda o sentido)</option>
+                  <option value="editorial">Editorial (só correção de texto)</option>
                 </Select>
               )}
             </Field>

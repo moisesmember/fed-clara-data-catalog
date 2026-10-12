@@ -87,7 +87,7 @@ export function DraftView({ draft, evidences }: { draft: Draft; evidences: Evide
           <ClaimRow label="Descrição de negócio" claim={content.business_description} resolve={resolve} />
           <ClaimRow label="Assunto" claim={content.subject} resolve={resolve} />
           <ClaimRow label="Domínio sugerido" claim={content.domain} resolve={resolve} />
-          <ClaimRow label="Granularidade" claim={content.granularity} resolve={resolve} />
+          <ClaimRow label="Cada linha representa" claim={content.granularity} resolve={resolve} />
           <div className="claim">
             <span className="claim__label">Sinônimos</span>
             <div className="cluster">{content.synonyms.length ? content.synonyms.map((s) => <Badge key={s}>{s}</Badge>) : <span className="muted">—</span>}</div>

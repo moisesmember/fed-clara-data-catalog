@@ -15,6 +15,10 @@ describe("Ficha publicada", () => {
     expect(screen.queryByText("Governança da ficha")).not.toBeInTheDocument();
     expect(screen.queryByText(/Ver metadados técnicos/)).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Editar ficha" })).not.toBeInTheDocument();
+    // Explicações visíveis e detalhes técnicos recolhidos.
+    expect(screen.getByText("Quem pode ver")).toBeInTheDocument();
+    expect(screen.getByText("Detalhes técnicos").closest("details")).not.toHaveAttribute("open");
+    expect(screen.queryByRole("columnheader", { name: "Tipo" })).not.toBeInTheDocument();
   });
 
   it("curador abre a edição da ficha e vai para a revisão", async () => {

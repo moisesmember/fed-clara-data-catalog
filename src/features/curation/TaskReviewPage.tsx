@@ -13,7 +13,7 @@ import { useJobTracker } from "@/shared/jobs/useJobTracker";
 import { useNotify } from "@/shared/ui/notifications";
 import { Badge, Button, PageHeader, Panel } from "@/shared/ui/primitives";
 import { Alert, EmptyState, QueryView, Skeleton } from "@/shared/ui/states";
-import { TaskStatusBadge } from "@/shared/ui/statusBadges";
+import { TaskStatusBadge, decisionLabel, jobStatusLabel, taskStatusLabel } from "@/shared/ui/statusBadges";
 
 import { DraftView, EvidencePanel } from "./DraftView";
 import { usePublishTask, useRefreshTask, useStartTask, useSubmitReview, useTask } from "./hooks";
@@ -55,7 +55,7 @@ function TaskReview({ task }: { task: TaskDetail }) {
     if (job.status === "succeeded") {
       notify(blockers.length ? "danger" : "success", outcome ? `${OUTCOME_MESSAGES[outcome] ?? outcome}${blockers.length ? ` ${blockers.join("; ")}` : ""}` : "Concluído.");
     } else {
-      notify("danger", `A operação terminou como “${job.status}”. ${job.last_error ?? ""}`);
+      notify("danger", `A operação terminou como “${jobStatusLabel(job.status)}”. ${job.last_error ?? ""}`);
     }
     setActiveJob(null);
   });
@@ -139,7 +139,7 @@ function TaskReview({ task }: { task: TaskDetail }) {
               ) : null
             }
           >
-            {startable ? "O modelo gera uma sugestão a partir das evidências da versão técnica; você revisa antes de qualquer publicação." : "Aguarde o término do job."}
+            {startable ? "O modelo gera uma sugestão a partir das evidências da versão técnica; você revisa antes de qualquer publicação." : "Aguarde: o rascunho está sendo gerado."}
           </EmptyState>
         </Panel>
       ) : (
@@ -154,7 +154,7 @@ function TaskReview({ task }: { task: TaskDetail }) {
             ) : cardEdit && (task.status === "open" || task.status === "generating") ? (
               <Alert tone="info">Preparando a edição: validando o conteúdo aprovado. Sem chamada à IA.</Alert>
             ) : (
-              <Alert tone="info">Esta tarefa não aguarda revisão (situação: {task.status}).</Alert>
+              <Alert tone="info">Esta tarefa não aguarda revisão (situação: {taskStatusLabel(task.status)}).</Alert>
             )}
             {startable ? (
               <Button onClick={startCuration} loading={start.isPending || tracker.running}>
@@ -184,7 +184,7 @@ function TaskReview({ task }: { task: TaskDetail }) {
                 <ul className="small">
                   {task.decisions.map((decision) => (
                     <li key={decision.id}>
-                      {decision.decision} por <strong>{decision.approver}</strong> (r{decision.draft_revision})
+                      {decisionLabel(decision.decision)} — <strong>{decision.approver}</strong> (rascunho r{decision.draft_revision})
                     </li>
                   ))}
                 </ul>

@@ -7,7 +7,8 @@ import { TrustBadge, VisibilityBadge } from "@/shared/ui/statusBadges";
 
 const BRANCH_LABEL: Record<string, string> = { text: "texto", vector: "semântica" };
 
-export function SearchResults({ hits, query }: { hits: SearchHit[]; query: string }) {
+/** `technical` mostra nome técnico, revisão e como a ficha foi encontrada (para quem lê metadados). */
+export function SearchResults({ hits, query, technical = false }: { hits: SearchHit[]; query: string; technical?: boolean }) {
   if (hits.length === 0) {
     return (
       <EmptyState title={`Nenhuma ficha publicada encontrada para “${query}”`}>
@@ -29,15 +30,19 @@ export function SearchResults({ hits, query }: { hits: SearchHit[]; query: strin
               {hit.review_required ? <Badge tone="warning">Revisão pendente</Badge> : null}
             </div>
           </div>
-          <code className="result__fqn">{hit.fqn}</code>
+          {technical ? <code className="result__fqn">{hit.fqn}</code> : null}
           <div className="cluster xsmall muted">
             <span>Domínio {hit.domain}</span>
-            <span aria-hidden="true">·</span>
-            <span>
-              Publicação r{hit.revision_no} · versão técnica v{hit.asset_version_no}
-            </span>
-            <span aria-hidden="true">·</span>
-            <span>Encontrado por {hit.branches.map((b) => BRANCH_LABEL[b] ?? b).join(" + ")}</span>
+            {technical ? (
+              <>
+                <span aria-hidden="true">·</span>
+                <span>
+                  Publicação r{hit.revision_no} · versão técnica v{hit.asset_version_no}
+                </span>
+                <span aria-hidden="true">·</span>
+                <span>Encontrado por {hit.branches.map((b) => BRANCH_LABEL[b] ?? b).join(" + ")}</span>
+              </>
+            ) : null}
           </div>
         </li>
       ))}
