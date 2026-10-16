@@ -187,9 +187,12 @@ export interface Pendency {
   blocking: boolean;
 }
 
+/** Tipos de evidência gravados pela sincronização (o backend pode acrescentar outros). */
+export type EvidenceKind = "table_comment" | "column_comment" | "catalog_comment" | "schema_comment" | "column_schema" | "document";
+
 export interface Evidence {
   id: number;
-  kind: string;
+  kind: EvidenceKind | (string & {});
   ref: string;
   text: string;
   untrusted: boolean;
@@ -371,12 +374,15 @@ export interface SourceSummary {
 }
 
 /** Escopo configurado ou visto pela última descoberta na origem.
- *  `visible`: true = a credencial vê; false = configurado, mas não visto; null = catálogo fora da descoberta. */
+ *  `visible`: true = a credencial vê; false = configurado, mas não visto; null = catálogo fora da descoberta.
+ *  Comentários vêm da origem (não confiáveis) e só existem para escopos vistos na descoberta. */
 export interface AvailableScope {
   scope: string;
   catalog: string;
   schema: string;
   tables: number | null;
+  catalog_comment: string | null;
+  schema_comment: string | null;
   configured: boolean;
   domain: string | null;
   visible: boolean | null;

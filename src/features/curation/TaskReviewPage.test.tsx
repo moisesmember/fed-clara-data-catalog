@@ -24,6 +24,23 @@ describe("Revisão de curadoria", () => {
     expect(screen.getByLabelText("Tipo de mudança")).toHaveValue("editorial");
   });
 
+  it("evidências mostram o tipo em português e marcam o comentário de schema substituído", async () => {
+    const evidences = [
+      ...task.evidences,
+      { id: 32, kind: "schema_comment", ref: "lab_dw.vendas#schema@aaaaaaaaaaaa", text: "Vendas do varejo", untrusted: true },
+      { id: 33, kind: "catalog_comment", ref: "lab_dw#catalog@bbbbbbbbbbbb", text: "Data warehouse do laboratório", untrusted: true },
+      { id: 40, kind: "schema_comment", ref: "lab_dw.vendas#schema@cccccccccccc", text: "Vendas do varejo e do e-commerce", untrusted: true },
+    ];
+    renderApp({ path: "/curadoria/7", subject: "carlos.curador", http: curationHttp({ "GET /curation/tasks/7": { ...task, evidences } }) });
+
+    expect(await screen.findByText("Comentário da tabela")).toBeInTheDocument();
+    expect(screen.getByText("Comentário do catálogo")).toBeInTheDocument();
+    expect(screen.getAllByText("Comentário do schema")).toHaveLength(2);
+    const superseded = screen.getByText("Substituído").closest("li") as HTMLElement;
+    expect(superseded).toHaveTextContent("Vendas do varejo");
+    expect(superseded).not.toHaveTextContent("e-commerce");
+  });
+
   it("curador não vê aprovar/rejeitar; edição envia nova revisão com a versão exibida", async () => {
     const http = curationHttp({ "POST /curation/tasks/7/review": { job_id: 90, decision_id: "d1" } });
     const user = userEvent.setup();

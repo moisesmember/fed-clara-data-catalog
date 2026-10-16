@@ -154,7 +154,28 @@ export function DraftView({ draft, evidences }: { draft: Draft; evidences: Evide
   );
 }
 
+const EVIDENCE_LABEL: Record<string, string> = {
+  table_comment: "Comentário da tabela",
+  column_comment: "Comentário de coluna",
+  catalog_comment: "Comentário do catálogo",
+  schema_comment: "Comentário do schema",
+  column_schema: "Estrutura das colunas",
+  document: "Documento",
+};
+
+/** Comentários de catálogo/schema alterados são anexados à mesma versão; só o mais recente vai ao modelo. */
+const CONTEXT_KINDS = new Set(["catalog_comment", "schema_comment"]);
+
+function supersededContext(evidences: Evidence[]): Set<number> {
+  const latest = new Map<string, number>();
+  for (const evidence of evidences) {
+    if (CONTEXT_KINDS.has(evidence.kind)) latest.set(evidence.kind, Math.max(latest.get(evidence.kind) ?? 0, evidence.id));
+  }
+  return new Set(evidences.filter((evidence) => CONTEXT_KINDS.has(evidence.kind) && latest.get(evidence.kind) !== evidence.id).map((evidence) => evidence.id));
+}
+
 export function EvidencePanel({ evidences }: { evidences: Evidence[] }) {
+  const superseded = supersededContext(evidences);
   return (
     <Panel title={`Evidências da versão (${evidences.length})`}>
       <p className="xsmall muted" style={{ marginBottom: "var(--space-3)" }}>
@@ -164,7 +185,12 @@ export function EvidencePanel({ evidences }: { evidences: Evidence[] }) {
         {evidences.map((evidence) => (
           <li key={evidence.id} className="evidence">
             <div className="cluster xsmall">
-              <Badge>{evidence.kind}</Badge>
+              <Badge title={evidence.kind}>{EVIDENCE_LABEL[evidence.kind] ?? evidence.kind}</Badge>
+              {superseded.has(evidence.id) ? (
+                <Badge tone="neutral" title="Texto anterior da origem; o rascunho usa o mais recente.">
+                  Substituído
+                </Badge>
+              ) : null}
               <code className="muted">{evidence.ref}</code>
             </div>
             <p className="small">{evidence.text}</p>

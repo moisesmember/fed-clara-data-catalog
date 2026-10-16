@@ -168,6 +168,7 @@ function ScopeRow({
     <tr>
       <td>
         <code>{row.scope}</code>
+        <ScopeComments row={row} />
       </td>
       <td className="small">{row.tables ?? "—"}</td>
       <td>
@@ -213,6 +214,18 @@ function ScopeRow({
         </span>
       </td>
     </tr>
+  );
+}
+
+/** Comentários do catálogo e do schema na origem: ajudam a escolher o escopo e viram contexto
+ *  da curadoria (ADR 0013 do backend). */
+function ScopeComments({ row }: { row: AvailableScope }) {
+  if (!row.schema_comment && !row.catalog_comment) return null;
+  return (
+    <div className="scope-comments xsmall muted">
+      {row.schema_comment ? <p>{row.schema_comment}</p> : null}
+      {row.catalog_comment ? <p>Catálogo: {row.catalog_comment}</p> : null}
+    </div>
   );
 }
 

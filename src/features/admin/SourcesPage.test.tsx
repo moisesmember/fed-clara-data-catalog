@@ -32,9 +32,12 @@ const OVERVIEW: ScopesOverview = {
   discovery_truncated: false,
   discovery_errors: [{ catalog: "sem_acesso", error: "ServerOperationError" }],
   scopes: [
-    { scope: "workspace.credit_risk", catalog: "workspace", schema: "credit_risk", tables: 4, configured: true, domain: "financeiro", visible: true },
-    { scope: "workspace.health", catalog: "workspace", schema: "health", tables: null, configured: true, domain: "saude", visible: false },
-    { scope: "workspace.marketing", catalog: "workspace", schema: "marketing", tables: 9, configured: false, domain: null, visible: true },
+    { scope: "workspace.credit_risk", catalog: "workspace", schema: "credit_risk", tables: 4, catalog_comment: "Área de trabalho compartilhada",
+      schema_comment: null, configured: true, domain: "financeiro", visible: true },
+    { scope: "workspace.health", catalog: "workspace", schema: "health", tables: null, catalog_comment: null, schema_comment: null,
+      configured: true, domain: "saude", visible: false },
+    { scope: "workspace.marketing", catalog: "workspace", schema: "marketing", tables: 9, catalog_comment: "Área de trabalho compartilhada",
+      schema_comment: "Campanhas e leads do CRM", configured: false, domain: null, visible: true },
   ],
 };
 
@@ -74,6 +77,11 @@ describe("Fontes: escopos sem mexer no código", () => {
 
     const row = within(table).getByText("workspace.marketing").closest("tr") as HTMLElement;
     expect(within(row).getByText("Disponível")).toBeInTheDocument();
+    // Comentários da origem ajudam a escolher o schema.
+    expect(within(row).getByText("Campanhas e leads do CRM")).toBeInTheDocument();
+    expect(within(row).getByText("Catálogo: Área de trabalho compartilhada")).toBeInTheDocument();
+    const health = within(table).getByText("workspace.health").closest("tr") as HTMLElement;
+    expect(within(health).queryByText(/Catálogo:/)).not.toBeInTheDocument();
     await user.type(within(row).getByLabelText("Domínio de workspace.marketing"), "marketing");
     await user.click(within(row).getByRole("button", { name: "Incluir" }));
 
