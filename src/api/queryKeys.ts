@@ -28,4 +28,5 @@ export const queryKeys = {
   unanswered: (days: number) => ["unanswered", days] as const,
   helpRequests: (status: string) => ["help-requests", status] as const,
   graphMetrics: (graph: string | undefined, sinceHours: number) => ["metrics", graph ?? "all", sinceHours] as const,
+  governanceDashboard: (days: number) => ["governance", days] as const,
 };

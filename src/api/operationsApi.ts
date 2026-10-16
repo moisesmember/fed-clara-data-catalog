@@ -2,7 +2,7 @@ import type { HttpClient } from "@/core/http/httpClient";
 
 import { endpoints } from "./endpoints";
 import { callEndpoint } from "./request";
-import type { AuditEvent, GraphMetrics, Job, JobAccepted, Page, ScopeAdded, ScopesOverview, SourceInput, SourceSummary, SyncRun } from "./types";
+import type { AuditEvent, GovernanceDashboard, GraphMetrics, Job, JobAccepted, Page, ScopeAdded, ScopesOverview, SourceInput, SourceSummary, SyncRun } from "./types";
 
 /** Administração e operação: fontes, sincronizações, jobs, auditoria e métricas. */
 export interface OperationsApi {
@@ -22,6 +22,8 @@ export interface OperationsApi {
   cancelJob(jobId: number): Promise<{ ok: boolean }>;
   audit(filters: { entityType?: string; entityId?: string }, page: Page): Promise<AuditEvent[]>;
   graphMetrics(graph?: "curation" | "answer", sinceHours?: number): Promise<GraphMetrics>;
+  /** Procura e qualidade de catalogação no período (curadores veem só os seus domínios). */
+  governanceDashboard(days: number): Promise<GovernanceDashboard>;
 }
 
 export function createOperationsApi(http: HttpClient): OperationsApi {
@@ -50,5 +52,6 @@ export function createOperationsApi(http: HttpClient): OperationsApi {
       }),
     graphMetrics: (graph, sinceHours = 24) =>
       callEndpoint(http, endpoints.graphMetrics, {}, { query: { graph, since_hours: sinceHours } }),
+    governanceDashboard: (days) => callEndpoint(http, endpoints.governanceDashboard, {}, { query: { days } }),
   };
 }

@@ -1,0 +1,337 @@
+/* Painel de governança. Séries: paleta categórica validada (linhas, pares adjacentes) contra a
+   superfície do app; no claro, aqua e amarelo ficam abaixo de 3:1, por isso há legenda, rótulos
+   e a tabela de dados. */
+.governance {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
+  --level-well: var(--success);
+  --level-well-track: var(--success-soft);
+  --level-partial: var(--warning);
+  --level-partial-track: var(--warning-soft);
+  --level-poor: var(--danger);
+  --level-poor-track: var(--danger-soft);
+  --level-uncataloged: var(--border-strong);
+  --level-uncataloged-track: var(--neutral-soft);
+  transition: opacity 120ms ease;
+}
+@media (prefers-color-scheme: dark) {
+  .governance {
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-3: #199e70;
+    --series-4: #c98500;
+  }
+}
+/* Troca de período: mantém o quadro anterior, esmaecido, até o novo recorte chegar. */
+.governance--refreshing {
+  opacity: 0.55;
+}
+.governance .kpis {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+}
+.governance__section-title {
+  margin: 0;
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+  font-weight: 650;
+}
+.governance__hint {
+  margin: 0 0 var(--space-3);
+}
+.governance__pair {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr));
+  gap: var(--space-5);
+  align-items: start;
+}
+.governance-table .num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+/* Cabeçalhos de linha leem como dado, não como cabeçalho de coluna. */
+.governance-table tbody th {
+  text-transform: none;
+  letter-spacing: normal;
+  font-size: var(--text-sm);
+  color: var(--text);
+  padding: var(--space-3);
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.governance-table__label {
+  display: flex;
+  flex-direction: column;
+  font-weight: 600;
+  text-align: left;
+}
+/* Em telas estreitas a tabela rola dentro do quadro, sem espremer o nome do ativo. */
+.governance-table .asset-name {
+  min-width: 200px;
+}
+
+/* ---- Gráfico de linhas ---- */
+.viz {
+  position: relative;
+  width: 100%;
+  min-width: 0;
+}
+.viz-svg {
+  display: block;
+  overflow: visible;
+}
+.viz-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+  shape-rendering: crispEdges;
+}
+.viz-tick {
+  fill: var(--text-subtle);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.viz-line {
+  fill: none;
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+.viz-dot {
+  stroke: var(--surface);
+  stroke-width: 2;
+}
+.viz-crosshair {
+  stroke: var(--text-subtle);
+  stroke-width: 1;
+}
+.viz-hit {
+  fill: transparent;
+  cursor: crosshair;
+}
+.viz-end-label {
+  fill: var(--text-muted);
+  font-size: 12px;
+}
+.viz-end-value {
+  fill: var(--text);
+  font-weight: 650;
+}
+.viz-tooltip {
+  position: absolute;
+  min-width: 170px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  font-size: var(--text-sm);
+  pointer-events: none;
+}
+.viz-tooltip__title {
+  font-size: var(--text-xs);
+  color: var(--text-subtle);
+  margin-bottom: var(--space-1);
+}
+.viz-tooltip__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.viz-legend {
+  list-style: none;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2) var(--space-4);
+  font-size: var(--text-sm);
+  color: var(--text-muted);
+}
+.viz-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.viz-legend--stacked {
+  flex-direction: column;
+  margin: 0;
+}
+.viz-key {
+  display: inline-block;
+  flex: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.viz-key--line {
+  height: 2px;
+  width: 14px;
+  border-radius: 1px;
+}
+
+/* ---- Parte do todo (níveis de catalogação) ---- */
+.quality-bar {
+  display: flex;
+  gap: 2px; /* separação pela superfície, não por borda */
+  height: 16px;
+  min-width: 120px;
+}
+.quality-bar--compact {
+  height: 10px;
+}
+.quality-bar__segment {
+  min-width: 3px;
+}
+.quality-bar__segment:first-child {
+  border-radius: 4px 0 0 4px;
+}
+.quality-bar__segment:last-child {
+  border-radius: 0 4px 4px 0;
+}
+.quality-bar__segment:only-child {
+  border-radius: 4px;
+}
+.quality-bar__segment--well,
+.quality-key--well {
+  background: var(--level-well);
+}
+.quality-bar__segment--partial,
+.quality-key--partial {
+  background: var(--level-partial);
+}
+.quality-bar__segment--poor,
+.quality-key--poor {
+  background: var(--level-poor);
+}
+.quality-bar__segment--uncataloged,
+.quality-key--uncataloged {
+  background: var(--level-uncataloged);
+}
+
+/* ---- Medidor de pontuação e barras de magnitude ---- */
+.score {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+.score__value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  min-width: 2.5ch;
+}
+.score-meter {
+  display: inline-block;
+  width: 72px;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+}
+.score-meter__fill {
+  display: block;
+  height: 100%;
+  border-radius: 0 4px 4px 0;
+}
+.score-meter--well {
+  background: var(--level-well-track);
+}
+.score-meter--well .score-meter__fill {
+  background: var(--level-well);
+}
+.score-meter--partial {
+  background: var(--level-partial-track);
+}
+.score-meter--partial .score-meter__fill {
+  background: var(--level-partial);
+}
+.score-meter--poor {
+  background: var(--level-poor-track);
+}
+.score-meter--poor .score-meter__fill {
+  background: var(--level-poor);
+}
+.score-meter--uncataloged {
+  background: var(--level-uncataloged-track);
+}
+.magnitude {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 260px;
+}
+.magnitude__track {
+  flex: 1;
+  height: 8px;
+  border-radius: 4px;
+  background: var(--neutral-soft);
+  overflow: hidden;
+}
+.magnitude__fill {
+  display: block;
+  height: 100%;
+  background: var(--series-1);
+  border-radius: 0 4px 4px 0;
+}
+.magnitude__value {
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  min-width: 3ch;
+  text-align: right;
+}
+
+/* ---- Listas ---- */
+.ranking {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+}
+.ranking__item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: var(--space-3);
+  padding: var(--space-3) 0;
+  border-bottom: 1px solid var(--border);
+}
+.ranking__item:last-child {
+  border-bottom: 0;
+}
+.ranking__metric {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+.asset-name {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.gap-list {
+  gap: var(--space-1);
+}
+.gap-list .ui-badge {
+  white-space: normal;
+}
+.gap-bars {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-3);
+}
+.gap-bars li {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 1fr);
+  gap: var(--space-3);
+  align-items: center;
+}
+
+@media (max-width: 640px) {
+  .ranking__item,
+  .gap-bars li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}

@@ -27,6 +27,7 @@ export const routes: RouteObject[] = [
       { index: true, element: <Navigate to="/explorar" replace /> },
       { path: "explorar", element: <ExplorePage /> },
       { path: "fichas/:assetId", lazy: lazyPage(() => import("@/features/cards/CardPage"), (m) => m.CardPage) },
+      { path: "governanca", lazy: lazyPage(() => import("@/features/governance/GovernancePage"), (m) => m.GovernancePage) },
       { path: "curadoria", lazy: lazyPage(() => import("@/features/curation/TaskQueuePage"), (m) => m.TaskQueuePage) },
       { path: "curadoria/demandas", lazy: lazyPage(() => import("@/features/demands/DemandsPage"), (m) => m.DemandsPage) },
       { path: "curadoria/:taskId", lazy: lazyPage(() => import("@/features/curation/TaskReviewPage"), (m) => m.TaskReviewPage) },

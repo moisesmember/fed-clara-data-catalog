@@ -98,6 +98,17 @@ servidor e cache), TypeScript 5.9 estrito, Vite 7, Vitest 3 + Testing Library, E
 - **Ciclo de melhoria**: "Isso ajudou?" e pedidos de ajuda alimentam a tela **Demandas dos
   usuários**, onde curadores veem o que mais se procura sem resposta e ensinam o glossário com um clique.
 
+### Painel de governança
+
+`/governanca` (curadores, aprovadores e administradores) cruza **procura** com **qualidade de
+catalogação**: saúde do catálogo (cobertura de fichas, certificação, pontuação média), uso no
+período (buscas, perguntas, fichas abertas, taxa sem resposta), frequência de interação por dia,
+lacunas mais comuns, prioridades de curadoria (procuradas e mal documentadas), mais e menos
+procuradas, bem e pouco catalogadas, e a visão por fonte de dados ou domínio. A pontuação e a
+privacidade (contagens agregadas, sem identificar quem consultou) são explicadas na própria tela
+e definidas no ADR 0014 do backend. Os gráficos são SVG próprios: cores de série validadas para
+daltonismo no claro e no escuro, legenda, tooltip por teclado e a mesma informação em tabela.
+
 ### UX e acessibilidade
 
 - Estados explícitos em toda consulta (carregando, vazio, erro com "tentar de novo").

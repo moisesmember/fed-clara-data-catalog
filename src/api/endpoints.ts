@@ -40,6 +40,7 @@ export const endpoints = {
   jobCancel: { method: "POST", path: "/jobs/{job_id}/cancel" },
   audit: { method: "GET", path: "/audit" },
   graphMetrics: { method: "GET", path: "/metrics/graphs" },
+  governanceDashboard: { method: "GET", path: "/governance/dashboard" },
   // Descoberta guiada para usuários não técnicos.
   browse: { method: "GET", path: "/catalog/browse" },
   suggest: { method: "GET", path: "/catalog/suggest" },

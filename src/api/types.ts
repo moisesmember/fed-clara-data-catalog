@@ -551,3 +551,91 @@ export interface Page {
   page: number;
   pageSize: number;
 }
+
+/* ---------------- Painel de governança (ADR 0014 do backend) ---------------- */
+
+/** Nível de catalogação: bem (>= 80), parcial (>= 50), pouco (< 50) ou sem ficha publicada. */
+export type QualityLevel = "well" | "partial" | "poor" | "uncataloged";
+export const QUALITY_LEVELS: readonly QualityLevel[] = ["well", "partial", "poor", "uncataloged"];
+
+export interface GovernanceAsset {
+  asset_id: number;
+  fqn: string;
+  name: string;
+  domain: string;
+  source_id: string;
+  published: boolean;
+  trust_status: TrustStatus | null;
+  score: number;
+  level: QualityLevel;
+  /** Chaves dos critérios não atendidos (ver `methodology.criteria`). */
+  gaps: string[];
+  /** Fichas abertas + citações em respostas. */
+  demand: number;
+  card_views: number;
+  citations: number;
+  search_hits: number;
+  priority?: number;
+}
+
+export interface GovernanceGroup {
+  key: string;
+  label: string;
+  assets: number;
+  published: number;
+  published_pct: number;
+  certified: number;
+  avg_score: number;
+  levels: Record<QualityLevel, number>;
+  demand: number;
+  search_hits: number;
+}
+
+export interface GovernanceDay {
+  day: string;
+  searches: number;
+  questions: number;
+  card_views: number;
+  unanswered: number;
+}
+
+export interface GovernanceDashboard {
+  period: { days: number; since: string; until: string };
+  scope: { all_domains: boolean; domains: string[] };
+  summary: {
+    assets: number;
+    assets_missing: number;
+    published: number;
+    published_pct: number | null;
+    certified: number;
+    certified_pct: number | null;
+    avg_score: number | null;
+    avg_score_published: number | null;
+    open_pendencies: number;
+    searches: number;
+    questions: number;
+    card_views: number;
+    unanswered: number;
+    unanswered_pct: number | null;
+    assets_with_demand: number;
+    published_without_demand: number;
+  };
+  timeline: GovernanceDay[];
+  quality_distribution: Record<QualityLevel, number>;
+  most_demanded: GovernanceAsset[];
+  least_demanded: GovernanceAsset[];
+  best_cataloged: GovernanceAsset[];
+  poorly_cataloged: GovernanceAsset[];
+  curation_priorities: GovernanceAsset[];
+  gaps: { key: string; label: string; assets: number }[];
+  by_source: GovernanceGroup[];
+  by_domain: GovernanceGroup[];
+  methodology: {
+    criteria: { key: string; label: string; weight: number }[];
+    thresholds: { well: number; partial: number };
+    demand: string;
+    privacy: string;
+    retention_days: number;
+    timezone: string;
+  };
+}

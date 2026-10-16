@@ -69,7 +69,7 @@ describe("Permissions (espelho das políticas do backend, só para a UI)", () =>
     const labels = (raw: [string, string, string][]) =>
       visibleNavigation(Permissions.fromMe(raw)).flatMap((group) => group.items.map((item) => item.to));
     expect(labels([["consumer", "financeiro", "*"]])).toEqual(["/explorar"]);
-    expect(labels([["curator", "financeiro", "*"]])).toEqual(["/explorar", "/curadoria", "/curadoria/demandas", "/ativos"]);
-    expect(labels([["admin", "*", "*"]])).toEqual(["/admin/fontes", "/admin/auditoria", "/admin/metricas"]);
+    expect(labels([["curator", "financeiro", "*"]])).toEqual(["/explorar", "/governanca", "/curadoria", "/curadoria/demandas", "/ativos"]);
+    expect(labels([["admin", "*", "*"]])).toEqual(["/governanca", "/admin/fontes", "/admin/auditoria", "/admin/metricas"]);
   });
 });
