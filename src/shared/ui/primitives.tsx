@@ -62,27 +62,40 @@ export function Disclosure({ summary, open, children }: { summary: ReactNode; op
   );
 }
 
-/** Campo com rótulo, dica e erro associados ao controle (aria-describedby). */
+/** Campo com rótulo, dica e erro associados ao controle (aria-describedby).
+ *  `aside` fica ao lado do rótulo, fora dele, para não entrar no nome acessível. */
 export function Field({
   label,
   hint,
   error,
+  aside,
   children,
 }: {
   label: ReactNode;
   hint?: ReactNode;
   error?: ReactNode;
+  aside?: ReactNode;
   children: (props: { id: string; "aria-describedby"?: string; "aria-invalid"?: boolean }) => ReactElement;
 }) {
   const id = useId();
   const hintId = hint ? `${id}-hint` : undefined;
   const errorId = error ? `${id}-error` : undefined;
   const describedBy = [hintId, errorId].filter(Boolean).join(" ") || undefined;
+  const labelElement = (
+    <label className="ui-field__label" htmlFor={id}>
+      {label}
+    </label>
+  );
   return (
     <div className="ui-field">
-      <label className="ui-field__label" htmlFor={id}>
-        {label}
-      </label>
+      {aside ? (
+        <div className="ui-field__head">
+          {labelElement}
+          {aside}
+        </div>
+      ) : (
+        labelElement
+      )}
       {children({ id, "aria-describedby": describedBy, "aria-invalid": error ? true : undefined })}
       {hint ? (
         <span id={hintId} className="ui-field__hint">

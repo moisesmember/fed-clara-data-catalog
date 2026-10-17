@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link, useParams } from "react-router";
 
 import { queryKeys } from "@/api/queryKeys";
@@ -11,13 +11,15 @@ import { formatDuration } from "@/shared/format";
 import { JobStatusLine } from "@/shared/jobs/JobStatusLine";
 import { useJobTracker } from "@/shared/jobs/useJobTracker";
 import { useNotify } from "@/shared/ui/notifications";
-import { Badge, Button, PageHeader, Panel } from "@/shared/ui/primitives";
+import { Badge, Button, Disclosure, PageHeader, Panel } from "@/shared/ui/primitives";
 import { Alert, EmptyState, QueryView, Skeleton } from "@/shared/ui/states";
 import { TaskStatusBadge, decisionLabel, jobStatusLabel, taskStatusLabel } from "@/shared/ui/statusBadges";
 
-import { DraftView, EvidencePanel } from "./DraftView";
+import { DecisionBar } from "./DecisionBar";
+import { applyEdits, hasChanges, toForm, type DraftForm } from "./draftEdits";
+import { DraftView, EvidenceList } from "./DraftView";
 import { usePublishTask, useRefreshTask, useStartTask, useSubmitReview, useTask } from "./hooks";
-import { ReviewPanel } from "./ReviewPanel";
+import { PublicationChecklist } from "./PublicationChecklist";
 import { isCardEdit, taskKindLabel } from "./taskKinds";
 import "./curation.css";
 
@@ -29,6 +31,8 @@ const OUTCOME_MESSAGES: Record<string, string> = {
   rejected: "Tarefa rejeitada.",
   already_started: "A curadoria já estava em andamento.",
 };
+
+type Draft = NonNullable<TaskDetail["draft"]>;
 
 export function TaskReviewPage() {
   const taskId = Number(useParams().taskId);
@@ -87,18 +91,19 @@ function TaskReview({ task }: { task: TaskDetail }) {
     });
   };
 
+  const businessName = task.draft?.content.business_name.text.trim();
+  const fqn = asset.data?.fqn;
+
   return (
     <>
       <PageHeader
-        eyebrow={`Curadoria · tarefa #${task.id}`}
-        title={asset.data ? <code>{asset.data.fqn}</code> : `Ativo #${task.asset_id}`}
+        eyebrow="Curadoria"
+        title={businessName || (fqn ? <code>{fqn}</code> : `Ativo #${task.asset_id}`)}
         subtitle={
           <span className="cluster">
             <Badge>{task.domain}</Badge>
             <span>{taskKindLabel(task.kind)}</span>
-            <span>· rodadas de revisão: {task.review_rounds}</span>
-            <span>· regenerações: {task.regenerations}</span>
-            {task.human_wait_ms ? <span>· espera humana acumulada: {formatDuration(task.human_wait_ms)}</span> : null}
+            {businessName && fqn ? <code className="small muted">{fqn}</code> : null}
           </span>
         }
         actions={
@@ -113,19 +118,9 @@ function TaskReview({ task }: { task: TaskDetail }) {
 
       {activeJob ? <JobStatusLine job={tracker.job} label={activeJob.label} /> : null}
       {conflict ? <Alert tone="warning">{conflict}</Alert> : null}
-      {task.last_error ? <Alert tone={task.status === "publication_blocked" ? "warning" : "danger"}>{task.last_error}</Alert> : null}
-      {task.open_pendencies.length ? (
-        <Panel title="Pendências abertas">
-          <ul className="issues">
-            {task.open_pendencies.map((pendency) => (
-              <li key={`${pendency.code}-${pendency.id ?? pendency.message}`} className="cluster small">
-                <Badge tone={pendency.blocking ? "danger" : "warning"}>{pendency.blocking ? "Bloqueia publicação" : "Atenção"}</Badge>
-                <span>{pendency.message}</span>
-              </li>
-            ))}
-          </ul>
-        </Panel>
-      ) : null}
+      {/* Bloqueio de publicação entra no quadro de pendências; outros erros (ex.: geração) ficam aqui. */}
+      {task.last_error && task.status !== "publication_blocked" ? <Alert tone="danger">{task.last_error}</Alert> : null}
+      <PublicationChecklist task={task} />
 
       {!task.draft ? (
         <Panel>
@@ -142,57 +137,154 @@ function TaskReview({ task }: { task: TaskDetail }) {
             {startable ? "O modelo gera uma sugestão a partir das evidências da versão técnica; você revisa antes de qualquer publicação." : "Aguarde: o rascunho está sendo gerado."}
           </EmptyState>
         </Panel>
+      ) : reviewable && permissionsLoading ? (
+        <Skeleton lines={8} />
       ) : (
-        <div className="grid-2">
-          <DraftView draft={task.draft} evidences={task.evidences} />
-          <div className="stack review-sidebar">
-            {reviewable && permissionsLoading ? (
-              <Skeleton lines={4} />
-            ) : reviewable ? (
-              // A chave reinicia o formulário se a revisão, a situação ou o papel mudarem.
-              <ReviewPanel key={`${task.draft_revision}-${task.status}-${canApprove}`} task={task} canApprove={canApprove} submitting={review.isPending || tracker.running} onSubmit={submitReview} />
-            ) : cardEdit && (task.status === "open" || task.status === "generating") ? (
-              <Alert tone="info">Preparando a edição: validando o conteúdo aprovado. Sem chamada à IA.</Alert>
-            ) : (
-              <Alert tone="info">Esta tarefa não aguarda revisão (situação: {taskStatusLabel(task.status)}).</Alert>
-            )}
-            {startable ? (
-              <Button onClick={startCuration} loading={start.isPending || tracker.running}>
-                {cardEdit ? "Retomar edição" : "Gerar novo rascunho"}
-              </Button>
-            ) : null}
-            {task.status === "approved" && canApprove ? (
-              <Button
-                variant="primary"
-                loading={publish.isPending}
-                onClick={() =>
-                  publish.mutate(undefined, {
-                    onSuccess: () => {
-                      notify("success", "Ficha publicada.");
-                      void refresh();
-                    },
-                    onError: (error) => notify("danger", describeError(error)),
-                  })
-                }
-              >
-                Publicar aprovação
-              </Button>
-            ) : null}
-            <EvidencePanel evidences={task.evidences} />
-            {task.decisions.length ? (
-              <Panel title="Histórico de decisões">
-                <ul className="small">
-                  {task.decisions.map((decision) => (
-                    <li key={decision.id}>
-                      {decisionLabel(decision.decision)} — <strong>{decision.approver}</strong> (rascunho r{decision.draft_revision})
-                    </li>
-                  ))}
-                </ul>
-              </Panel>
-            ) : null}
-          </div>
-        </div>
+        // A chave reinicia as edições se a revisão, a situação ou o papel mudarem.
+        <ReviewWorkspace
+          key={`${task.draft_revision}-${task.status}-${canApprove}`}
+          task={task}
+          draft={task.draft}
+          reviewable={reviewable}
+          canApprove={canApprove}
+          submitting={review.isPending || tracker.running}
+          onSubmit={submitReview}
+        >
+          {reviewable ? null : (
+            <div className="stack-sm">
+              {cardEdit && (task.status === "open" || task.status === "generating") ? (
+                <Alert tone="info">Preparando a edição: validando o conteúdo aprovado. Sem chamada à IA.</Alert>
+              ) : (
+                <Alert tone="info">Esta tarefa não aguarda revisão (situação: {taskStatusLabel(task.status)}).</Alert>
+              )}
+              <div className="cluster">
+                {startable ? (
+                  <Button onClick={startCuration} loading={start.isPending || tracker.running}>
+                    {cardEdit ? "Retomar edição" : "Gerar novo rascunho"}
+                  </Button>
+                ) : null}
+                {task.status === "approved" && canApprove ? (
+                  <Button
+                    variant="primary"
+                    loading={publish.isPending}
+                    onClick={() =>
+                      publish.mutate(undefined, {
+                        onSuccess: () => {
+                          notify("success", "Ficha publicada.");
+                          void refresh();
+                        },
+                        onError: (error) => notify("danger", describeError(error)),
+                      })
+                    }
+                  >
+                    Publicar aprovação
+                  </Button>
+                ) : null}
+              </div>
+            </div>
+          )}
+        </ReviewWorkspace>
       )}
     </>
+  );
+}
+
+interface ReviewWorkspaceProps {
+  task: TaskDetail;
+  draft: Draft;
+  reviewable: boolean;
+  canApprove: boolean;
+  submitting: boolean;
+  onSubmit: (submission: ReviewSubmission) => void;
+  /** Ações de quem não está revisando (retomar, publicar aprovação). */
+  children?: ReactNode;
+}
+
+/** Ficha editável no próprio lugar, consulta recolhida e a decisão no fim. */
+function ReviewWorkspace({ task, draft, reviewable, canApprove, submitting, onSubmit, children }: ReviewWorkspaceProps) {
+  const initial = useMemo(() => toForm(draft.content), [draft.content]);
+  const [form, setForm] = useState<DraftForm>(initial);
+  const edited = reviewable && hasChanges(draft.content, form);
+
+  return (
+    <div className="review-workspace stack">
+      <DraftView
+        draft={draft}
+        evidences={task.evidences}
+        editing={reviewable ? { form, initial, onChange: (key, value) => setForm((current) => ({ ...current, [key]: value })) } : undefined}
+      />
+
+      <Panel>
+        <div className="stack-sm">
+          <Disclosure summary={`Todas as evidências da versão (${task.evidences.length})`}>
+            <EvidenceList evidences={task.evidences} />
+          </Disclosure>
+          <Disclosure summary="Detalhes da tarefa">
+            <TaskDetails task={task} draft={draft} />
+          </Disclosure>
+        </div>
+      </Panel>
+
+      {children}
+      {reviewable ? (
+        <DecisionBar
+          task={task}
+          canApprove={canApprove}
+          edited={edited}
+          editedContent={() => applyEdits(draft.content, form)}
+          noLimitations={!form.limitations.trim()}
+          submitting={submitting}
+          onSubmit={onSubmit}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function TaskDetails({ task, draft }: { task: TaskDetail; draft: Draft }) {
+  return (
+    <div className="stack-sm small">
+      <dl className="details-list">
+        <dt>Tarefa</dt>
+        <dd>#{task.id}</dd>
+        <dt>Rascunho</dt>
+        <dd>
+          r{draft.revision} · {draft.origin === "ai" ? "gerado por IA" : "editado por pessoa"}
+        </dd>
+        {draft.model ? (
+          <>
+            <dt>Modelo</dt>
+            <dd>
+              {draft.model}
+              {draft.prompt_version ? ` · prompt ${draft.prompt_version}` : ""}
+            </dd>
+          </>
+        ) : null}
+        <dt>Versão técnica</dt>
+        <dd>#{task.asset_version_id}</dd>
+        <dt>Rodadas de revisão</dt>
+        <dd>{task.review_rounds}</dd>
+        <dt>Regenerações</dt>
+        <dd>{task.regenerations}</dd>
+        {task.human_wait_ms ? (
+          <>
+            <dt>Espera humana acumulada</dt>
+            <dd>{formatDuration(task.human_wait_ms)}</dd>
+          </>
+        ) : null}
+      </dl>
+      {task.decisions.length ? (
+        <div>
+          <strong>Histórico de decisões</strong>
+          <ul>
+            {task.decisions.map((decision) => (
+              <li key={decision.id}>
+                {decisionLabel(decision.decision)} — <strong>{decision.approver}</strong> (rascunho r{decision.draft_revision})
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </div>
   );
 }

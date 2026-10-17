@@ -19,12 +19,21 @@
 .evidence-ref {
   display: inline-block;
   padding: 0 var(--space-2);
+  border: 1px solid transparent;
   border-radius: var(--radius-sm);
   background: var(--info-soft);
   color: var(--info);
+  font: inherit;
   font-size: var(--text-xs);
   font-weight: 700;
-  cursor: help;
+  cursor: pointer;
+}
+.evidence-ref[aria-expanded="true"] {
+  border-color: var(--info);
+}
+.evidence-ref:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
 }
 .issues,
 .evidences {
@@ -44,41 +53,59 @@
   background: var(--surface-2);
   overflow-wrap: anywhere;
 }
-.review-sidebar {
-  position: sticky;
-  top: var(--space-5);
-}
-.decisions,
-.editor {
-  border: 0;
+.evidence--inline {
   margin: 0;
-  padding: 0;
+  border-left: 3px solid var(--info);
+}
+
+.review-workspace {
+  max-width: 920px;
+}
+.details-list {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+}
+.details-list dt {
+  color: var(--text-muted);
+}
+.details-list dd {
+  margin: 0;
+}
+
+/* Barra de decisão: fica presa ao rodapé enquanto se lê e edita a ficha. */
+.decision-bar {
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
   display: grid;
   gap: var(--space-2);
-}
-.decision {
-  display: flex;
-  gap: var(--space-3);
-  align-items: flex-start;
-  padding: var(--space-3);
+  padding: var(--space-3) var(--space-4);
   border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  cursor: pointer;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  background: var(--surface);
+  box-shadow: var(--shadow-md);
 }
-.decision span {
+.decision-bar__panel {
+  max-height: 60vh;
+  overflow-y: auto;
+  padding-bottom: var(--space-3);
+  border-bottom: 1px solid var(--border);
+}
+.decision-bar__title {
+  margin: 0;
+  font-size: var(--text-md);
+}
+.decision-bar__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: var(--space-3);
+}
+.decision-bar__actions {
   display: flex;
-  flex-direction: column;
-}
-.decision input {
-  margin-top: 4px;
-  accent-color: var(--accent);
-}
-.decision--active {
-  border-color: var(--accent);
-  background: var(--accent-soft);
-}
-@media (max-width: 960px) {
-  .review-sidebar {
-    position: static;
-  }
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
 }

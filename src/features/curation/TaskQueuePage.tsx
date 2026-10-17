@@ -2,7 +2,7 @@ import { Link, useSearchParams } from "react-router";
 
 import type { TaskStatus } from "@/api/types";
 import { useSession } from "@/core/auth/SessionProvider";
-import { formatDateTime } from "@/shared/format";
+import { formatDateTime, formatRelative } from "@/shared/format";
 import { Badge, PageHeader, Pagination, Panel, Select } from "@/shared/ui/primitives";
 import { EmptyState, QueryView } from "@/shared/ui/states";
 import { TaskStatusBadge, taskStatusLabel } from "@/shared/ui/statusBadges";
@@ -12,11 +12,15 @@ import { taskKindLabel } from "./taskKinds";
 
 const PAGE_SIZE = 25;
 const STATUS_FILTERS: TaskStatus[] = ["awaiting_review", "open", "failed", "publication_blocked", "approved", "published", "rejected", "superseded"];
+/** A fila abre no que espera ação; `?status=todas` mostra tudo. */
+const DEFAULT_STATUS: TaskStatus = "awaiting_review";
+const ALL_STATUSES = "todas";
 
 export function TaskQueuePage() {
   const [params, setParams] = useSearchParams();
   const { permissions } = useSession();
-  const status = (params.get("status") ?? "") as TaskStatus | "";
+  const statusParam = params.get("status") ?? DEFAULT_STATUS;
+  const status = (statusParam === ALL_STATUSES ? "" : statusParam) as TaskStatus | "";
   const domain = params.get("dominio") ?? "";
   const page = Number(params.get("pagina") ?? "1") || 1;
   const queue = useTaskQueue({ status, domain }, { page, pageSize: PAGE_SIZE });
@@ -40,8 +44,13 @@ export function TaskQueuePage() {
             <label className="visually-hidden" htmlFor="filtro-status">
               Filtrar por situação
             </label>
-            <Select id="filtro-status" value={status} onChange={(event) => setFilter("status", event.target.value)} style={{ width: 220 }}>
-              <option value="">Todas as situações</option>
+            <Select
+              id="filtro-status"
+              value={statusParam}
+              onChange={(event) => setFilter("status", event.target.value === DEFAULT_STATUS ? "" : event.target.value)}
+              style={{ width: 220 }}
+            >
+              <option value={ALL_STATUSES}>Todas as situações</option>
               {STATUS_FILTERS.map((s) => (
                 <option key={s} value={s}>
                   {taskStatusLabel(s)}
@@ -64,7 +73,11 @@ export function TaskQueuePage() {
         <QueryView query={queue} skeletonLines={6}>
           {(tasks) =>
             tasks.length === 0 ? (
-              <EmptyState title="Nenhuma tarefa encontrada">Ajuste os filtros ou aguarde a próxima sincronização.</EmptyState>
+              status === DEFAULT_STATUS ? (
+                <EmptyState title="Nada aguardando revisão">Novas tarefas aparecem aqui após a próxima sincronização.</EmptyState>
+              ) : (
+                <EmptyState title="Nenhuma tarefa encontrada">Ajuste os filtros ou aguarde a próxima sincronização.</EmptyState>
+              )
             ) : (
               <div className="stack">
                 <div className="ui-table-wrap">
@@ -75,7 +88,6 @@ export function TaskQueuePage() {
                         <th scope="col">Motivo</th>
                         <th scope="col">Domínio</th>
                         <th scope="col">Situação</th>
-                        <th scope="col">Revisão</th>
                         <th scope="col">Atualizada</th>
                       </tr>
                     </thead>
@@ -94,8 +106,11 @@ export function TaskQueuePage() {
                           <td>
                             <TaskStatusBadge status={task.status} />
                           </td>
-                          <td className="muted">{task.draft_revision ? `r${task.draft_revision}` : "—"}</td>
-                          <td className="muted small">{formatDateTime(task.updated_at)}</td>
+                          <td className="muted small">
+                            <time dateTime={task.updated_at} title={formatDateTime(task.updated_at)}>
+                              {formatRelative(task.updated_at)}
+                            </time>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
