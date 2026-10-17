@@ -45,6 +45,46 @@ describe("Revisão de curadoria", () => {
     expect(superseded).not.toHaveTextContent("e-commerce");
   });
 
+  it("perguntas do Genie viram sugestões das perguntas de exemplo, só da versão mais recente do espaço", async () => {
+    const evidences = [
+      ...task.evidences,
+      { id: 50, kind: "genie_questions", ref: "genie:sp1#questions@aaaaaaaaaaaa", text: "Pergunta antiga do Genie?", untrusted: true },
+      { id: 51, kind: "genie_instructions", ref: "genie:sp1#instructions@bbbbbbbbbbbb", text: "Instruções do espaço Genie “Vendas”:\nUse a data de emissão.", untrusted: true },
+      { id: 52, kind: "genie_questions", ref: "genie:sp1#questions@cccccccccccc", text: "Quanto vendemos por loja?\nQual o ticket médio?", untrusted: true },
+    ];
+    const user = userEvent.setup();
+    renderApp({ path: "/curadoria/7", subject: "carlos.curador", http: curationHttp({ "GET /curation/tasks/7": { ...task, evidences } }) });
+
+    const suggestions = await screen.findByRole("region", { name: "Perguntas sugeridas pelo Genie" });
+    expect(within(suggestions).queryByText("Pergunta antiga do Genie?")).not.toBeInTheDocument();
+    await user.click(within(suggestions).getByRole("button", { name: "Usar a pergunta: Quanto vendemos por loja?" }));
+    expect((screen.getByLabelText("Perguntas que esta ficha responde") as HTMLTextAreaElement).value).toMatch(/\nQuanto vendemos por loja\?$/);
+    // A pergunta usada sai da lista; o rótulo da evidência aparece em português.
+    expect(within(suggestions).queryByRole("button", { name: "Usar a pergunta: Quanto vendemos por loja?" })).not.toBeInTheDocument();
+    expect(within(suggestions).getByRole("button", { name: "Usar a pergunta: Qual o ticket médio?" })).toBeInTheDocument();
+    expect(screen.getAllByText("Perguntas do Genie")).toHaveLength(2);
+    expect(screen.getByText("Instruções do Genie")).toBeInTheDocument();
+  });
+
+  it("significado sugerido pelo Genie aparece marcado como sugestão de IA, com a resposta à vista", async () => {
+    const genie = { id: 60, kind: "genie_answer", ref: "genie:sp1#answer:columns@dddddddddddd", untrusted: true,
+      text: "Pergunta da Clara ao Genie: …\nResposta do Genie: vl_liq: valor líquido do item após descontos" };
+    const draft = {
+      ...task.draft!,
+      evidence_map: { ...task.draft!.evidence_map, E2: 60 },
+      content: { ...task.draft!.content, column_notes: [{ column: "vl_liq", meaning: { text: "valor líquido do item após descontos", status: "suggested" as const, evidence_refs: ["E2"] } }] },
+    };
+    const user = userEvent.setup();
+    renderApp({ path: "/curadoria/7", subject: "carlos.curador", http: curationHttp({ "GET /curation/tasks/7": { ...task, draft, evidences: [...task.evidences, genie] } }) });
+
+    const row = (await screen.findByText("valor líquido do item após descontos")).closest("tr") as HTMLElement;
+    expect(within(row).getByText("Sugerido pelo Genie")).toBeInTheDocument();
+    await user.click(within(row).getByRole("button", { name: "Evidência E2" }));
+    expect(within(row).getByText(/Resposta do Genie · inferência de IA a partir dos dados, a confirmar/)).toBeInTheDocument();
+    // Descrição sustentada pela origem não ganha o selo.
+    expect(screen.getAllByText("Sugerido pelo Genie")).toHaveLength(1);
+  });
+
   it("curador não vê aprovar/rejeitar; salvar só com edição, enviando nova revisão com a versão exibida", async () => {
     const http = curationHttp({ "POST /curation/tasks/7/review": { job_id: 90, decision_id: "d1" } });
     const user = userEvent.setup();

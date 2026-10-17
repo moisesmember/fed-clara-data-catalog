@@ -79,6 +79,7 @@ function sourcesHttp(extra: Record<string, unknown> = {}) {
     "GET /sources/dbx-free-lab/sync-runs": [],
     "GET /sources/dbx-free-lab/scopes": OVERVIEW,
     "GET /sources/dbx-free-lab/genie-spaces": [],
+    "GET /sources/dbx-free-lab/genie-coverage": [],
     ...extra,
   });
 }
@@ -230,6 +231,7 @@ describe("Fontes: conexão automática", () => {
       "GET /sources/dbx-novo/sync-runs": [],
       "GET /sources/dbx-novo/scopes": { ...OVERVIEW, source_id: "dbx-novo", http_path: null, discovered_at: null, discovery_errors: [], catalogs: [], rules: [] },
       "GET /sources/dbx-novo/genie-spaces": [],
+      "GET /sources/dbx-novo/genie-coverage": [],
       "POST /sources/dbx-novo/warehouse": { warehouse: BIG, jobs: { test: 11, discover: 12 } },
       "GET /jobs/12": RUNNING_JOB(12, "source.discover"),
     });
@@ -252,6 +254,7 @@ describe("Fontes: conexão automática", () => {
       "GET /sources/dbx-novo/sync-runs": [],
       "GET /sources/dbx-novo/scopes": { ...OVERVIEW, source_id: "dbx-novo", http_path: null, discovered_at: null, discovery_errors: [], catalogs: [], rules: [] },
       "GET /sources/dbx-novo/genie-spaces": [],
+      "GET /sources/dbx-novo/genie-coverage": [],
     });
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
     expect(await screen.findByText(/Não foi possível listar os SQL Warehouses \(PermissionDenied\)/)).toBeInTheDocument();
@@ -262,7 +265,8 @@ describe("Fontes: atalhos para o Genie", () => {
   it("registra um espaço a partir do link copiado do Genie e remove com confirmação", async () => {
     const space = { id: 4, title: "Vendas e faturamento", description: null, domains: ["financeiro", "comercial"], source_id: "dbx-free-lab",
       space_id: "01f0a1b2c3d4e5f60718293a4b5c6d7e", created_by: "ana.admin", created_at: "2026-10-17T10:00:00Z",
-      url: "https://dbc.cloud.databricks.com/genie/rooms/01f0a1b2c3d4e5f60718293a4b5c6d7e" };
+      url: "https://dbc.cloud.databricks.com/genie/rooms/01f0a1b2c3d4e5f60718293a4b5c6d7e", synced_at: "2026-10-17T11:00:00Z", sync_error: null,
+      tables: 3, questions: 5 };
     const http = sourcesHttp({
       "GET /sources/dbx-free-lab/genie-spaces": [space],
       "POST /sources/dbx-free-lab/genie-spaces": { id: 5 },
@@ -271,8 +275,9 @@ describe("Fontes: atalhos para o Genie", () => {
     const user = userEvent.setup();
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
 
-    await user.click(await screen.findByText("Atalhos para o Genie (dados sem ficha e pedidos de valor)"));
+    await user.click(await screen.findByText("Genie (atalhos e contexto para a curadoria)"));
     expect(await screen.findByRole("link", { name: "Vendas e faturamento" })).toHaveAttribute("href", space.url);
+    expect(screen.getByText(/3 tabela\(s\) · 5 pergunta\(s\)/)).toBeInTheDocument();
     const form = screen.getByRole("form", { name: "Registrar espaço Genie" });
     await user.type(within(form).getByLabelText("Espaço Genie"), "https://dbc.cloud.databricks.com/genie/rooms/01f0ffffeeeeddddccccbbbbaaaa9999?o=123");
     await user.type(within(form).getByLabelText("Título"), "Dados gerais");
@@ -286,6 +291,37 @@ describe("Fontes: atalhos para o Genie", () => {
     await user.click(screen.getByRole("button", { name: "Remover atalho Vendas e faturamento" }));
     await user.click(screen.getByRole("button", { name: "Confirmar remoção" }));
     expect(await screen.findByText("Atalho “Vendas e faturamento” removido.")).toBeInTheDocument();
+  });
+});
+
+describe("Fontes: contexto do Genie para a curadoria", () => {
+  it("mostra a leitura dos espaços, relê sob demanda e aponta o que o Genie usa e a Clara não cataloga", async () => {
+    const failing = { id: 4, title: "Crédito", description: null, domains: ["financeiro"], source_id: "dbx-free-lab", space_id: "01f0a1b2c3d4e5f60718293a4b5c6d7e",
+      created_by: "ana.admin", created_at: "2026-10-17T10:00:00Z", url: "https://dbc.cloud.databricks.com/genie/rooms/01f0a1b2c3d4e5f60718293a4b5c6d7e",
+      synced_at: "2026-10-17T11:00:00Z", sync_error: "PermissionDenied", tables: 2, questions: 4 };
+    const http = sourcesHttp({
+      "GET /sources/dbx-free-lab/genie-spaces": [failing],
+      "GET /sources/dbx-free-lab/genie-coverage": [
+        { fqn: "workspace.credit_risk.emprestimos", catalog: "workspace", schema: "credit_risk", name: "emprestimos", spaces: ["Crédito"], status: "catalogued", asset_id: 9 },
+        { fqn: "workspace.marketing.leads", catalog: "workspace", schema: "marketing", name: "leads", spaces: ["Crédito"], status: "not_selected", asset_id: null },
+      ],
+      "POST /sources/dbx-free-lab/genie-spaces/refresh": { job_id: 77 },
+      "GET /jobs/77": { id: 77, kind: "genie.refresh", status: "running", attempts: 1, max_attempts: 1, last_error: null, result: null,
+        created_at: "", started_at: null, finished_at: null, cancel_requested: false },
+    });
+    const user = userEvent.setup();
+    renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
+
+    await user.click(await screen.findByText("Genie (atalhos e contexto para a curadoria)"));
+    expect(await screen.findByText("Leitura falhou (PermissionDenied)")).toBeInTheDocument();
+    const coverage = await screen.findByRole("region", { name: "Tabelas usadas no Genie" });
+    expect(within(coverage).getByText("1 tabela(s) usada(s) no Genie ainda não fazem parte da seleção da fonte.")).toBeInTheDocument();
+    const leads = within(coverage).getByText("workspace.marketing.leads").closest("li") as HTMLElement;
+    expect(within(leads).getByText("Fora da seleção")).toBeInTheDocument();
+    expect(within(coverage).getByText("Catalogada")).toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "Atualizar do Genie" }));
+    expect(http.callsTo("POST", "/sources/dbx-free-lab/genie-spaces/refresh")).toHaveLength(1);
   });
 });
 

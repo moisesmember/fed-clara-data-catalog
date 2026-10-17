@@ -123,8 +123,8 @@ export function SourceCard({ source }: { source: SourceSummary }) {
         </Disclosure>
 
         {isWarehouse ? (
-          <Disclosure summary="Atalhos para o Genie (dados sem ficha e pedidos de valor)">
-            <GenieSpacesManager source={source} />
+          <Disclosure summary="Genie (atalhos e contexto para a curadoria)">
+            <GenieSpacesManager source={source} onJob={onJob} />
           </Disclosure>
         ) : null}
 

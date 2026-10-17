@@ -98,12 +98,28 @@ export interface GenieOffer {
   url: string;
 }
 
-/** Espaço Genie registrado numa fonte (administração). */
+/** Espaço Genie registrado numa fonte (administração). `tables`/`questions` vêm do último
+ *  retrato da configuração do espaço, usado como contexto da curadoria (ADR 0017 do backend). */
 export interface GenieSpace extends GenieOffer {
   source_id: string;
   space_id: string;
   created_by: string;
   created_at: string;
+  synced_at: string | null;
+  sync_error: string | null;
+  tables: number;
+  questions: number;
+}
+
+/** Tabela usada num espaço Genie e se a Clara já a cataloga. */
+export interface GenieCoverageRow {
+  fqn: string;
+  catalog: string;
+  schema: string;
+  name: string;
+  spaces: string[];
+  status: "catalogued" | "selected" | "not_selected";
+  asset_id: number | null;
 }
 
 export interface GenieSpaceInput {

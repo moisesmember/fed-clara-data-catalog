@@ -113,6 +113,12 @@ export function useGenieSpaces(sourceId: string) {
   return useQuery({ queryKey: queryKeys.genieSpaces(sourceId), queryFn: () => operations.genieSpaces(sourceId) });
 }
 
+export function useGenieCoverage(sourceId: string) {
+  const { operations } = useServices();
+  return useQuery({ queryKey: queryKeys.genieCoverage(sourceId), queryFn: () => operations.genieCoverage(sourceId) });
+}
+
+/** Mudanças nos espaços (e a releitura deles) atualizam a lista e a cobertura. */
 export function useGenieActions(sourceId: string) {
   const { operations } = useServices();
   const queryClient = useQueryClient();
@@ -120,6 +126,7 @@ export function useGenieActions(sourceId: string) {
   return {
     add: useMutation({ mutationFn: (space: GenieSpaceInput) => operations.addGenieSpace(sourceId, space), onSuccess: refresh }),
     remove: useMutation({ mutationFn: (genieId: number) => operations.removeGenieSpace(sourceId, genieId), onSuccess: refresh }),
+    reload: useMutation({ mutationFn: () => operations.refreshGenie(sourceId) }),
   };
 }
 

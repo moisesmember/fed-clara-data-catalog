@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import type { Claim, Evidence, TaskDetail } from "@/api/types";
-import { Badge, Disclosure, Field, Panel, TextArea, TextInput } from "@/shared/ui/primitives";
+import { Badge, Button, Disclosure, Field, Panel, TextArea, TextInput } from "@/shared/ui/primitives";
 import { ClaimBadge } from "@/shared/ui/statusBadges";
 
 import type { DraftForm } from "./draftEdits";
@@ -19,6 +19,10 @@ const EVIDENCE_LABEL: Record<string, string> = {
   schema_comment: "Comentário do schema",
   column_schema: "Estrutura das colunas",
   document: "Documento",
+  genie_table: "Descrição no Genie",
+  genie_instructions: "Instruções do Genie",
+  genie_questions: "Perguntas do Genie",
+  genie_answer: "Resposta do Genie",
 };
 
 const evidenceLabel = (kind: string) => EVIDENCE_LABEL[kind] ?? kind;
@@ -50,7 +54,7 @@ function EvidenceQuote({ evidenceKey, resolve }: { evidenceKey: string | null; r
       {evidence ? (
         <>
           <span className="xsmall muted">
-            {evidenceLabel(evidence.kind)} · conteúdo da origem, não confiável
+            {evidenceLabel(evidence.kind)} · {evidence.kind === "genie_answer" ? "inferência de IA a partir dos dados, a confirmar" : "conteúdo da origem, não confiável"}
           </span>
           <span className="small">{evidence.text}</span>
         </>
@@ -61,12 +65,19 @@ function EvidenceQuote({ evidenceKey, resolve }: { evidenceKey: string | null; r
   );
 }
 
-/** Status da afirmação e evidências citadas; texto editado vira afirmação humana. */
-function ClaimMeta({ claim, edited, shown, onToggle }: { claim: Claim; edited: boolean; shown: string | null; onToggle: (key: string) => void }) {
+/** Status da afirmação e evidências citadas; texto editado vira afirmação humana. Afirmação
+ *  apoiada numa resposta do Genie fica marcada: é sugestão de IA, o curador confirma. */
+function ClaimMeta({ claim, edited, shown, onToggle, resolve }: { claim: Claim; edited: boolean; shown: string | null; onToggle: (key: string) => void; resolve: Resolve }) {
   if (edited) return <Badge tone="accent">Alterado por você</Badge>;
+  const fromGenie = claim.evidence_refs.some((key) => resolve(key)?.kind === "genie_answer");
   return (
     <span className="cluster">
       <EvidenceRefs refs={claim.evidence_refs} shown={shown} onToggle={onToggle} />
+      {fromGenie ? (
+        <Badge tone="info" title="Sugerido a partir de uma resposta do Genie (IA que consulta os dados). Confirme antes de aprovar.">
+          Sugerido pelo Genie
+        </Badge>
+      ) : null}
       <ClaimBadge status={claim.status} />
     </span>
   );
@@ -78,7 +89,7 @@ function ClaimRow({ label, claim, resolve }: { label: string; claim: Claim; reso
     <div className="claim">
       <div className="spread">
         <span className="claim__label">{label}</span>
-        <ClaimMeta claim={claim} edited={false} shown={shown} onToggle={toggle} />
+        <ClaimMeta claim={claim} edited={false} shown={shown} onToggle={toggle} resolve={resolve} />
       </div>
       <p className={claim.text ? "" : "muted"}>{claim.text || "—"}</p>
       <EvidenceQuote evidenceKey={shown} resolve={resolve} />
@@ -108,7 +119,7 @@ interface EditableProps {
 
 function EditableField({ label, hint, value, edited, onChange, rows, claim, resolve }: EditableProps) {
   const [shown, toggle] = useShownEvidence();
-  const aside = claim ? <ClaimMeta claim={claim} edited={edited} shown={shown} onToggle={toggle} /> : edited ? <Badge tone="accent">Alterado por você</Badge> : null;
+  const aside = claim ? <ClaimMeta claim={claim} edited={edited} shown={shown} onToggle={toggle} resolve={resolve} /> : edited ? <Badge tone="accent">Alterado por você</Badge> : null;
   return (
     <div className="claim">
       <Field label={label} hint={hint} aside={aside}>
@@ -177,6 +188,16 @@ export function DraftView({ draft, evidences, editing }: { draft: Draft; evidenc
               <ul className="small">{content.example_questions.map((question) => <li key={question}>{question}</li>)}</ul>
             </TextRow>
           )}
+          {editing ? (
+            <GenieQuestionSuggestions
+              questions={genieQuestions(evidences)}
+              current={editing.form.exampleQuestions}
+              onAdd={(question) => {
+                const current = editing.form.exampleQuestions.trimEnd();
+                editing.onChange("exampleQuestions", current ? `${current}\n${question}` : question);
+              }}
+            />
+          ) : null}
           {editable("businessName", "Nome de negócio", { claim: content.business_name }) ?? <ClaimRow label="Nome de negócio" claim={content.business_name} resolve={resolve} />}
           {editable("businessDescription", "Descrição de negócio", { claim: content.business_description, rows: 3 }) ?? (
             <ClaimRow label="Descrição de negócio" claim={content.business_description} resolve={resolve} />
@@ -247,7 +268,7 @@ function ColumnNoteRow({ note, resolve }: { note: Draft["content"]["column_notes
         <EvidenceQuote evidenceKey={shown} resolve={resolve} />
       </td>
       <td>
-        <ClaimMeta claim={note.meaning} edited={false} shown={shown} onToggle={toggle} />
+        <ClaimMeta claim={note.meaning} edited={false} shown={shown} onToggle={toggle} resolve={resolve} />
       </td>
     </tr>
   );
@@ -281,15 +302,60 @@ function ColumnNotes({ notes, resolve }: { notes: Draft["content"]["column_notes
   );
 }
 
-/** Comentários de catálogo/schema alterados são anexados à mesma versão; só o mais recente vai ao modelo. */
-const CONTEXT_KINDS = new Set(["catalog_comment", "schema_comment"]);
+/** Contexto alterado (comentários de catálogo/schema, configuração dos espaços Genie) é anexado à
+ *  mesma versão; só o mais recente de cada família vai ao modelo. */
+const CONTEXT_KINDS = new Set(["catalog_comment", "schema_comment", "genie_table", "genie_instructions", "genie_questions"]);
+
+/** Tipo + referência sem o resumo do texto (`…@<digest>`), como `context_family` no backend. */
+function family(evidence: Evidence): string {
+  const at = evidence.ref.lastIndexOf("@");
+  return `${evidence.kind}|${at > 0 ? evidence.ref.slice(0, at) : evidence.ref}`;
+}
 
 function supersededContext(evidences: Evidence[]): Set<number> {
   const latest = new Map<string, number>();
   for (const evidence of evidences) {
-    if (CONTEXT_KINDS.has(evidence.kind)) latest.set(evidence.kind, Math.max(latest.get(evidence.kind) ?? 0, evidence.id));
+    if (CONTEXT_KINDS.has(evidence.kind)) latest.set(family(evidence), Math.max(latest.get(family(evidence)) ?? 0, evidence.id));
   }
-  return new Set(evidences.filter((evidence) => CONTEXT_KINDS.has(evidence.kind) && latest.get(evidence.kind) !== evidence.id).map((evidence) => evidence.id));
+  return new Set(evidences.filter((evidence) => CONTEXT_KINDS.has(evidence.kind) && latest.get(family(evidence)) !== evidence.id).map((evidence) => evidence.id));
+}
+
+/** Perguntas reais dos espaços Genie (versão mais recente de cada espaço), uma por linha. */
+export function genieQuestions(evidences: Evidence[]): string[] {
+  const superseded = supersededContext(evidences);
+  const lines = evidences
+    .filter((evidence) => evidence.kind === "genie_questions" && !superseded.has(evidence.id))
+    .flatMap((evidence) => evidence.text.split("\n").map((line) => line.trim()))
+    .filter(Boolean);
+  return [...new Set(lines)];
+}
+
+/** Sugestões vindas do Genie para as perguntas de exemplo: o curador escolhe e pode reescrever. */
+function GenieQuestionSuggestions({ questions, current, onAdd }: { questions: string[]; current: string; onAdd: (question: string) => void }) {
+  const used = new Set(current.split("\n").map((line) => line.trim().toLowerCase()));
+  const available = questions.filter((question) => !used.has(question.toLowerCase()));
+  if (!questions.length) return null;
+  return (
+    <section className="genie-questions stack-sm" aria-label="Perguntas sugeridas pelo Genie">
+      <span className="small">
+        <strong>Perguntas que usuários fazem no Genie</strong> <span className="muted">sobre os dados deste espaço. Use as que esta ficha ajuda a responder e reescreva em linguagem simples.</span>
+      </span>
+      {available.length ? (
+        <ul className="genie-questions__list">
+          {available.map((question) => (
+            <li key={question} className="cluster">
+              <span className="small">{question}</span>
+              <Button size="sm" variant="ghost" aria-label={`Usar a pergunta: ${question}`} onClick={() => onAdd(question)}>
+                + Usar
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <span className="xsmall muted">Todas as perguntas do Genie já estão na lista.</span>
+      )}
+    </section>
+  );
 }
 
 /** Lista completa das evidências da versão técnica (consulta; o rascunho já cita cada uma). */

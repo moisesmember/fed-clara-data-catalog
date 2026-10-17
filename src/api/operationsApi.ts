@@ -5,6 +5,7 @@ import { callEndpoint } from "./request";
 import type {
   AuditEvent,
   DiscoveredObjects,
+  GenieCoverageRow,
   GenieSpace,
   GenieSpaceInput,
   GovernanceDashboard,
@@ -49,6 +50,9 @@ export interface OperationsApi {
   genieSpaces(sourceId: string): Promise<GenieSpace[]>;
   addGenieSpace(sourceId: string, space: GenieSpaceInput): Promise<{ id: number }>;
   removeGenieSpace(sourceId: string, genieId: number): Promise<{ ok: boolean }>;
+  /** Relê a configuração dos espaços (sem executar perguntas) e atualiza o contexto da curadoria. */
+  refreshGenie(sourceId: string): Promise<JobAccepted>;
+  genieCoverage(sourceId: string): Promise<GenieCoverageRow[]>;
   job(jobId: number): Promise<Job>;
   cancelJob(jobId: number): Promise<{ ok: boolean }>;
   audit(filters: { entityType?: string; entityId?: string }, page: Page): Promise<AuditEvent[]>;
@@ -81,6 +85,8 @@ export function createOperationsApi(http: HttpClient): OperationsApi {
     genieSpaces: (sourceId) => callEndpoint(http, endpoints.sourceGenieSpaces, { source_id: sourceId }),
     addGenieSpace: (sourceId, space) => callEndpoint(http, endpoints.sourceGenieSpaceAdd, { source_id: sourceId }, { json: space }),
     removeGenieSpace: (sourceId, genieId) => callEndpoint(http, endpoints.sourceGenieSpaceRemove, { source_id: sourceId, genie_id: genieId }),
+    refreshGenie: (sourceId) => callEndpoint(http, endpoints.sourceGenieRefresh, { source_id: sourceId }),
+    genieCoverage: (sourceId) => callEndpoint(http, endpoints.sourceGenieCoverage, { source_id: sourceId }),
     job: (jobId) => callEndpoint(http, endpoints.job, { job_id: jobId }),
     cancelJob: (jobId) => callEndpoint(http, endpoints.jobCancel, { job_id: jobId }),
     audit: (filters, page) =>

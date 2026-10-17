@@ -109,3 +109,17 @@
   justify-content: space-between;
   gap: var(--space-2);
 }
+
+/* Perguntas vindas do Genie como sugestão para as perguntas de exemplo (ADR 0017 do backend). */
+.genie-questions {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.genie-questions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-1);
+}

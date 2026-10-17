@@ -42,6 +42,8 @@ export const endpoints = {
   sourceGenieSpaces: { method: "GET", path: "/sources/{source_id}/genie-spaces" },
   sourceGenieSpaceAdd: { method: "POST", path: "/sources/{source_id}/genie-spaces" },
   sourceGenieSpaceRemove: { method: "DELETE", path: "/sources/{source_id}/genie-spaces/{genie_id}" },
+  sourceGenieRefresh: { method: "POST", path: "/sources/{source_id}/genie-spaces/refresh" },
+  sourceGenieCoverage: { method: "GET", path: "/sources/{source_id}/genie-coverage" },
   job: { method: "GET", path: "/jobs/{job_id}" },
   jobCancel: { method: "POST", path: "/jobs/{job_id}/cancel" },
   audit: { method: "GET", path: "/audit" },

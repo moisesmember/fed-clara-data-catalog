@@ -20,6 +20,7 @@ export const queryKeys = {
   syncRuns: (sourceId: string, page: Page) => ["sources", sourceId, "runs", page] as const,
   sourceScopes: (sourceId: string) => ["sources", sourceId, "scopes"] as const,
   genieSpaces: (sourceId: string) => ["sources", sourceId, "genie"] as const,
+  genieCoverage: (sourceId: string) => ["sources", sourceId, "genie", "coverage"] as const,
   sourceObjects: (sourceId: string, catalog: string, schema: string) => ["sources", sourceId, "scopes", "objects", catalog, schema] as const,
   job: (jobId: number) => ["job", jobId] as const,
   audit: (filters: { entityType?: string; entityId?: string }, page: Page) => ["audit", filters, page] as const,

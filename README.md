@@ -135,7 +135,10 @@ respondem 404, e a UI mostra uma mensagem neutra. O cache é descartado ao troca
   catálogo → schema → tabela, com filtros de tipo (gerenciada, externa, view...) e formato (Delta,
   Parquet...), registra atalhos para espaços Genie do Databricks, testa, sincroniza e importa
   arquivos. Os atalhos aparecem na resposta sem ficha ou de valor e na ajuda do curador (só link e
-  cópia da pergunta; a interface não chama o Genie). Editar conexão, credencial, agenda ou limites de uma fonte existente ainda é
+  cópia da pergunta; a interface não chama o Genie). Na revisão de curadoria, as perguntas que
+  usuários fazem no Genie aparecem como sugestões para as perguntas de exemplo, e o cartão da
+  fonte mostra a leitura dos espaços e as tabelas que o Genie usa e a Clara ainda não cataloga.
+  Significados sugeridos a partir de respostas do Genie aparecem com o selo "Sugerido pelo Genie". Editar conexão, credencial, agenda ou limites de uma fonte existente ainda é
   pela API (`POST /sources` com o mesmo `id` substitui a configuração).
 - Edição de rascunho cobre os campos principais (nome, descrição, assunto, granularidade,
   sinônimos, limitações); significados de coluna são revisados pela regeneração ou pela API.
