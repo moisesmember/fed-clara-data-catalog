@@ -318,10 +318,44 @@ export type SourceKind = (typeof SOURCE_KINDS)[number];
 export const AUTH_METHODS = ["oauth_m2m", "pat", "none"] as const;
 export type AuthMethod = (typeof AUTH_METHODS)[number];
 
+/** Tipos de objeto na origem que a seleção filtra (`TableKind` no backend). */
+export const TABLE_KINDS = ["MANAGED", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW", "STREAMING_TABLE", "FOREIGN"] as const;
+export type TableKind = (typeof TABLE_KINDS)[number];
+
+/** Uma seleção (ADR 0015 do backend): catálogo inteiro (`schema` nulo), schema inteiro ou
+ *  tabelas escolhidas (`tables`). Catálogo/schema inteiros acompanham a origem. `null` em
+ *  `table_types`/`formats` = todos. A seleção do schema vence a do catálogo. */
 export interface ScopeConfig {
   catalog: string;
-  schema: string;
+  schema: string | null;
+  tables: string[] | null;
+  exclude: string[];
+  table_types: TableKind[] | null;
+  formats: string[] | null;
   domain: string;
+}
+
+/** Seleção enviada ao backend: campos ausentes assumem o padrão (tudo). */
+export type ScopeInput = Pick<ScopeConfig, "catalog" | "domain"> & Partial<Omit<ScopeConfig, "catalog" | "domain">>;
+
+/** `PATCH` de uma seleção: só os campos presentes mudam; `tables: null` volta ao schema inteiro. */
+export type ScopeChanges = Partial<Pick<ScopeConfig, "domain" | "tables" | "exclude" | "table_types" | "formats">>;
+
+export interface Warehouse {
+  id: string;
+  name: string | null;
+  state: string | null;
+  size: string | null;
+  type: string | null;
+  serverless: boolean;
+  http_path: string;
+}
+
+/** Última listagem de SQL Warehouses do workspace (job `source.connect`). */
+export interface WarehouseListing {
+  listed_at: string;
+  items: Warehouse[];
+  error: string | null;
 }
 
 /** Corpo de `POST /sources` (`SourceConfig`). O mesmo `id` substitui a configuração existente. */
@@ -331,13 +365,20 @@ export interface SourceInput {
   environment: SourceEnvironment;
   kind: SourceKind;
   host?: string;
+  /** Opcional: sem ele, a Clara lista os SQL Warehouses e adota o único, se houver só um. */
   http_path?: string;
   auth_method: AuthMethod;
   /** Referência ao segredo (ex.: `env:DBX_VENDAS`), nunca o segredo. */
   credential_ref?: string;
-  scopes: ScopeConfig[];
+  scopes: ScopeInput[];
   schedule_time?: string;
   owner: string;
+}
+
+/** Resposta do cadastro: jobs que a Clara já enfileirou (`connect`, ou `test` + `discover`). */
+export interface SourceCreated {
+  id: string;
+  jobs: Partial<Record<"connect" | "test" | "discover", number>>;
 }
 
 export interface CapabilityStep {
@@ -363,6 +404,8 @@ export interface SourceSummary {
   environment: string;
   kind: "databricks_sql" | "file";
   host: string | null;
+  http_path: string | null;
+  warehouses: WarehouseListing | null;
   auth_method: string;
   scopes: ScopeConfig[];
   schedule_time: string | null;
@@ -373,27 +416,64 @@ export interface SourceSummary {
   last_capability_check: CapabilityReport | null;
 }
 
-/** Escopo configurado ou visto pela última descoberta na origem.
- *  `visible`: true = a credencial vê; false = configurado, mas não visto; null = catálogo fora da descoberta.
- *  Comentários vêm da origem (não confiáveis) e só existem para escopos vistos na descoberta. */
-export interface AvailableScope {
-  scope: string;
-  catalog: string;
+/** Schema visto pela última descoberta. `rule` é a seleção configurada exatamente neste schema;
+ *  `owner` é a chave da seleção que decide aqui (a do schema ou a do catálogo); `selected` conta
+ *  os objetos descobertos que ela inclui. Comentários vêm da origem (não confiáveis). */
+export interface DiscoveredSchema {
   schema: string;
-  tables: number | null;
-  catalog_comment: string | null;
-  schema_comment: string | null;
-  configured: boolean;
+  comment: string | null;
+  tables: number;
+  types: Partial<Record<TableKind | "OTHER", number>>;
+  formats: Record<string, number>;
+  rule: ScopeConfig | null;
+  owner: string | null;
   domain: string | null;
+  selected: number;
+}
+
+export interface DiscoveredCatalog {
+  catalog: string;
+  comment: string | null;
+  rule: ScopeConfig | null;
+  schemas: DiscoveredSchema[];
+}
+
+/** Seleção configurada. `visible`: true = a credencial vê; false = não vista na última descoberta;
+ *  null = catálogo fora da descoberta. */
+export interface ConfiguredRule extends ScopeConfig {
+  key: string;
   visible: boolean | null;
 }
 
 export interface ScopesOverview {
   source_id: string;
+  http_path: string | null;
+  warehouses: WarehouseListing | null;
   discovered_at: string | null;
   discovery_truncated: boolean;
+  objects_truncated: boolean;
   discovery_errors: { catalog: string; error: string }[];
-  scopes: AvailableScope[];
+  catalogs: DiscoveredCatalog[];
+  rules: ConfiguredRule[];
+}
+
+export interface DiscoveredObject {
+  name: string;
+  table_type: string | null;
+  data_format: string | null;
+  selected: boolean;
+}
+
+export interface DiscoveredObjects {
+  catalog: string;
+  schema: string;
+  owner: string | null;
+  objects: DiscoveredObject[];
+}
+
+export interface WarehouseSelected {
+  warehouse: Warehouse;
+  jobs: Partial<Record<"test" | "discover", number>>;
 }
 
 export interface ScopeAdded {

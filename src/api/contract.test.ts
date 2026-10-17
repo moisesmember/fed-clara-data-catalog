@@ -4,7 +4,7 @@
 import { describe, expect, it } from "vitest";
 
 import { endpoints } from "./endpoints";
-import { AUTH_METHODS, CHANGE_KINDS, CLAIM_STATUSES, REVIEW_DECISIONS, SOURCE_ENVIRONMENTS, SOURCE_KINDS, TRUST_STATUSES, VISIBILITIES } from "./types";
+import { AUTH_METHODS, CHANGE_KINDS, CLAIM_STATUSES, REVIEW_DECISIONS, SOURCE_ENVIRONMENTS, SOURCE_KINDS, TABLE_KINDS, TRUST_STATUSES, VISIBILITIES } from "./types";
 
 const apiUrl = process.env.CLARA_API_URL;
 
@@ -38,12 +38,21 @@ describe.skipIf(!apiUrl)("contrato com o backend (openapi.json)", () => {
     expect([...SOURCE_ENVIRONMENTS].sort()).toEqual([...(schemas.SourceEnvironment?.enum ?? [])].sort());
     expect([...SOURCE_KINDS].sort()).toEqual([...(schemas.SourceKind?.enum ?? [])].sort());
     expect([...AUTH_METHODS].sort()).toEqual([...(schemas.AuthMethod?.enum ?? [])].sort());
+    expect([...TABLE_KINDS].sort()).toEqual([...(schemas.TableKind?.enum ?? [])].sort());
   });
 
   it("campos enviados no cadastro de fonte existem em SourceConfig", async () => {
     const props = Object.keys((await load()).components.schemas.SourceConfig?.properties ?? {});
     const sent = ["id", "name", "environment", "kind", "host", "http_path", "auth_method", "credential_ref", "scopes", "schedule_time", "owner"];
     expect(sent.filter((field) => !props.includes(field))).toEqual([]);
+  });
+
+  it("campos de seleção enviados existem em ScopeRequest e ScopeUpdateRequest", async () => {
+    const { schemas } = (await load()).components;
+    const sent = ["catalog", "schema", "tables", "exclude", "table_types", "formats", "domain", "sync"];
+    expect(sent.filter((field) => !Object.keys(schemas.ScopeRequest?.properties ?? {}).includes(field))).toEqual([]);
+    const changes = ["domain", "tables", "exclude", "table_types", "formats"];
+    expect(changes.filter((field) => !Object.keys(schemas.ScopeUpdateRequest?.properties ?? {}).includes(field))).toEqual([]);
   });
 
   it("campos enviados na revisão existem em ReviewSubmission", async () => {

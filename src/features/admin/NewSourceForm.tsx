@@ -37,13 +37,15 @@ function validateSource(form: SourceForm, existingIds: string[]): Errors {
   if (!form.owner.trim()) errors.owner = "Informe o responsável.";
   if (form.kind === "databricks_sql") {
     if (!form.host.trim()) errors.host = "Informe o host do workspace.";
-    if (!form.httpPath.trim()) errors.httpPath = "Informe o HTTP path do SQL Warehouse.";
     if (!form.credentialRef.trim()) errors.credentialRef = "Informe a referência da credencial.";
     if (form.authMethod === "pat" && form.environment === "prod") errors.authMethod = "Token pessoal não é permitido em produção.";
   }
-  if (!form.catalog.trim()) errors.catalog = "Informe o catálogo.";
-  if (!form.schema.trim()) errors.schema = "Informe o schema.";
-  if (!/^[a-z0-9_-]{1,64}$/.test(form.domain)) errors.domain = "Use letras minúsculas, números, _ ou - (ex.: financeiro).";
+  // Databricks: a seleção é opcional (escolhida depois, a partir da descoberta). Arquivo: sem ela nada é importado.
+  const selecting = form.kind === "file" || form.catalog.trim() || form.schema.trim() || form.domain;
+  if (selecting) {
+    if (!form.catalog.trim()) errors.catalog = "Informe o catálogo.";
+    if (!/^[a-z0-9_-]{1,64}$/.test(form.domain)) errors.domain = "Use letras minúsculas, números, _ ou - (ex.: financeiro).";
+  }
   return errors;
 }
 
@@ -55,16 +57,17 @@ function toSourceInput(form: SourceForm): SourceInput {
     environment: form.environment,
     kind: form.kind,
     host: databricks ? form.host.trim() : undefined,
-    http_path: databricks ? form.httpPath.trim() : undefined,
+    http_path: databricks ? form.httpPath.trim() || undefined : undefined,
     auth_method: databricks ? form.authMethod : "none",
     credential_ref: databricks ? form.credentialRef.trim() : undefined,
-    scopes: [{ catalog: form.catalog.trim(), schema: form.schema.trim(), domain: form.domain }],
+    scopes: form.catalog.trim() ? [{ catalog: form.catalog.trim(), schema: form.schema.trim() || null, domain: form.domain }] : [],
     schedule_time: form.scheduleTime || undefined,
     owner: form.owner.trim(),
   };
 }
 
-/** Cadastro de fonte com o primeiro escopo. Os demais escopos são geridos depois, no cartão da fonte. */
+/** Cadastro de fonte. Para Databricks bastam host e credencial: a Clara encontra o SQL Warehouse,
+ *  testa e descobre a origem (ADR 0015 do backend); o que publicar é escolhido no cartão da fonte. */
 export function NewSourceForm({ existingIds, onDone }: { existingIds: string[]; onDone: () => void }) {
   const { session } = useSession();
   const create = useCreateSource();
@@ -96,8 +99,11 @@ export function NewSourceForm({ existingIds, onDone }: { existingIds: string[]; 
     setSubmitted(true);
     if (Object.keys(errors).length) return;
     create.mutate(toSourceInput(form), {
-      onSuccess: ({ id }) => {
-        notify("success", databricks ? `Fonte ${id} cadastrada. Teste a conexão para verificar a credencial.` : `Fonte ${id} cadastrada. Importe um arquivo para trazer os metadados.`);
+      onSuccess: ({ id, jobs }) => {
+        const next = jobs.connect
+          ? "A Clara está procurando o SQL Warehouse; depois testa a conexão e descobre a origem."
+          : "A Clara está testando a conexão e descobrindo a origem.";
+        notify("success", databricks ? `Fonte ${id} cadastrada. ${next}` : `Fonte ${id} cadastrada. Importe um arquivo para trazer os metadados.`);
         onDone();
       },
       onError: (error) => notify("danger", describeError(error)),
@@ -141,7 +147,7 @@ export function NewSourceForm({ existingIds, onDone }: { existingIds: string[]; 
             <Field label="Host" hint="Ex.: adb-123.azuredatabricks.net" error={shown.host}>
               {(props) => <TextInput {...props} {...text("host")} autoComplete="off" />}
             </Field>
-            <Field label="HTTP path" hint="Ex.: /sql/1.0/warehouses/abc123" error={shown.httpPath}>
+            <Field label="HTTP path (opcional)" hint="Em branco, a Clara lista os SQL Warehouses e usa o único disponível (ou pede para você escolher)." error={shown.httpPath}>
               {(props) => <TextInput {...props} {...text("httpPath")} autoComplete="off" />}
             </Field>
             <Field label="Autenticação" error={shown.authMethod}>
@@ -163,9 +169,11 @@ export function NewSourceForm({ existingIds, onDone }: { existingIds: string[]; 
         ) : null}
 
         <fieldset className="source-form">
-          <legend className="ui-field__label">Primeiro escopo</legend>
+          <legend className="ui-field__label">{databricks ? "Primeira seleção (opcional)" : "Primeira seleção"}</legend>
           <Field label="Catálogo" error={shown.catalog}>{(props) => <TextInput {...props} {...text("catalog")} autoComplete="off" />}</Field>
-          <Field label="Schema" error={shown.schema}>{(props) => <TextInput {...props} {...text("schema")} autoComplete="off" />}</Field>
+          <Field label="Schema" hint="Em branco = catálogo inteiro." error={shown.schema}>
+            {(props) => <TextInput {...props} {...text("schema")} autoComplete="off" />}
+          </Field>
           <Field label="Domínio" hint="Área dona dos dados. Ex.: financeiro" error={shown.domain}>
             {(props) => <TextInput {...props} {...text("domain")} onChange={(e) => set("domain")(e.target.value.toLowerCase())} autoComplete="off" />}
           </Field>
@@ -173,7 +181,11 @@ export function NewSourceForm({ existingIds, onDone }: { existingIds: string[]; 
             {(props) => <TextInput {...props} type="time" {...text("scheduleTime")} />}
           </Field>
         </fieldset>
-        <p className="xsmall muted">Depois de cadastrar, descubra e inclua outros escopos no cartão da fonte.</p>
+        <p className="xsmall muted">
+          {databricks
+            ? "Depois de cadastrar, a Clara mostra os catálogos, schemas e tabelas da origem para você escolher o que publicar."
+            : "Depois de cadastrar, inclua outras seleções no cartão da fonte."}
+        </p>
 
         <div className="cluster">
           <Button type="submit" variant="primary" loading={create.isPending}>

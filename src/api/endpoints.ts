@@ -33,9 +33,12 @@ export const endpoints = {
   // Escopos um a um e descoberta na origem (ADR 0012 do backend).
   sourceScopes: { method: "GET", path: "/sources/{source_id}/scopes" },
   sourceScopeAdd: { method: "POST", path: "/sources/{source_id}/scopes" },
-  sourceScopeDomain: { method: "PATCH", path: "/sources/{source_id}/scopes/{scope}" },
+  sourceScopeUpdate: { method: "PATCH", path: "/sources/{source_id}/scopes/{scope}" },
   sourceScopeRemove: { method: "DELETE", path: "/sources/{source_id}/scopes/{scope}" },
   sourceDiscover: { method: "POST", path: "/sources/{source_id}/discover" },
+  sourceObjects: { method: "GET", path: "/sources/{source_id}/objects" },
+  sourceWarehouse: { method: "POST", path: "/sources/{source_id}/warehouse" },
+  sourceWarehousesRefresh: { method: "POST", path: "/sources/{source_id}/warehouses/refresh" },
   job: { method: "GET", path: "/jobs/{job_id}" },
   jobCancel: { method: "POST", path: "/jobs/{job_id}/cancel" },
   audit: { method: "GET", path: "/audit" },

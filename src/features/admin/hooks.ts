@@ -1,12 +1,26 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/api/queryKeys";
-import type { Page, SourceInput } from "@/api/types";
+import type { Page, ScopeChanges, ScopeInput, ScopesOverview, SourceInput, SourceSummary } from "@/api/types";
 import { useServices } from "@/core/services";
 
+/** Fonte Databricks recém-cadastrada que ainda espera a listagem de SQL Warehouses. */
+function connecting(source: SourceSummary): boolean {
+  return source.kind === "databricks_sql" && !source.http_path && !source.warehouses;
+}
+
+/** Espera pelos jobs automáticos com limite (~2 min): fonte que nunca foi descoberta não fica
+ *  consultando o backend para sempre; "Descobrir na origem" acompanha o job explicitamente. */
+const MAX_POLLS = 40;
+
+/** Enquanto a Clara conecta uma fonte nova (job em segundo plano), a lista se atualiza sozinha. */
 export function useSources() {
   const { operations } = useServices();
-  return useQuery({ queryKey: queryKeys.sources, queryFn: () => operations.sources() });
+  return useQuery({
+    queryKey: queryKeys.sources,
+    queryFn: () => operations.sources(),
+    refetchInterval: (query) => (query.state.data?.some(connecting) && query.state.dataUpdateCount < MAX_POLLS ? 3000 : false),
+  });
 }
 
 export function useCreateSource() {
@@ -33,12 +47,45 @@ export function useSourceActions(sourceId: string) {
   };
 }
 
-export function useSourceScopes(sourceId: string) {
-  const { operations } = useServices();
-  return useQuery({ queryKey: queryKeys.sourceScopes(sourceId), queryFn: () => operations.scopes(sourceId) });
+/** Com o warehouse definido e a primeira descoberta ainda em curso, a árvore se atualiza sozinha. */
+function awaitingDiscovery(overview: ScopesOverview | undefined): boolean {
+  return Boolean(overview?.http_path && !overview.discovered_at);
 }
 
-/** Mudanças de escopo alteram a configuração da fonte: atualiza a lista de fontes e a visão de escopos. */
+export function useSourceScopes(sourceId: string) {
+  const { operations } = useServices();
+  return useQuery({
+    queryKey: queryKeys.sourceScopes(sourceId),
+    queryFn: () => operations.scopes(sourceId),
+    refetchInterval: (query) => (awaitingDiscovery(query.state.data) && query.state.dataUpdateCount < MAX_POLLS ? 3000 : false),
+  });
+}
+
+export function useDiscoveredObjects(sourceId: string, catalog: string, schema: string) {
+  const { operations } = useServices();
+  return useQuery({
+    queryKey: queryKeys.sourceObjects(sourceId, catalog, schema),
+    queryFn: () => operations.discoveredObjects(sourceId, catalog, schema),
+  });
+}
+
+/** Escolha do SQL Warehouse: muda a fonte e dispara teste + descoberta no backend. */
+export function useWarehouseActions(sourceId: string) {
+  const { operations } = useServices();
+  const queryClient = useQueryClient();
+  const refresh = () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: queryKeys.sources, exact: true }),
+      queryClient.invalidateQueries({ queryKey: queryKeys.sourceScopes(sourceId) }),
+    ]);
+  return {
+    choose: useMutation({ mutationFn: (warehouseId: string) => operations.setWarehouse(sourceId, warehouseId), onSuccess: refresh }),
+    refresh: useMutation({ mutationFn: () => operations.refreshWarehouses(sourceId) }),
+  };
+}
+
+/** Mudanças de seleção alteram a configuração da fonte: atualiza a lista de fontes e a árvore
+ *  (inclusive as listas de objetos, cujo `selected` depende da seleção). */
 export function useScopeActions(sourceId: string) {
   const { operations } = useServices();
   const queryClient = useQueryClient();
@@ -49,11 +96,11 @@ export function useScopeActions(sourceId: string) {
     ]);
   return {
     add: useMutation({
-      mutationFn: (scope: { catalog: string; schema: string; domain: string; sync: boolean }) => operations.addScope(sourceId, scope),
+      mutationFn: (scope: ScopeInput & { sync: boolean }) => operations.addScope(sourceId, scope),
       onSuccess: refresh,
     }),
-    setDomain: useMutation({
-      mutationFn: ({ scope, domain }: { scope: string; domain: string }) => operations.setScopeDomain(sourceId, scope, domain),
+    update: useMutation({
+      mutationFn: ({ scope, changes }: { scope: string; changes: ScopeChanges }) => operations.updateScope(sourceId, scope, changes),
       onSuccess: refresh,
     }),
     remove: useMutation({ mutationFn: (scope: string) => operations.removeScope(sourceId, scope), onSuccess: refresh }),

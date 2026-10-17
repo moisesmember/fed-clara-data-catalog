@@ -15,6 +15,8 @@ import { jobStatusLabel } from "@/shared/ui/statusBadges";
 import { CapabilityChecklist } from "./CapabilityChecklist";
 import { useSourceActions, useSyncRuns } from "./hooks";
 import { ScopesManager } from "./ScopesManager";
+import { describeRule, ruleKey } from "./selection";
+import { WarehousePanel } from "./WarehousePanel";
 
 const STATUS_TONE = { active: "success", paused: "neutral", error: "danger" } as const;
 const STATUS_LABEL = { active: "Ativa", paused: "Pausada", error: "Com erro" } as const;
@@ -50,7 +52,8 @@ export function SourceCard({ source }: { source: SourceSummary }) {
     );
 
   const busy = tracker.running || actions.test.isPending || actions.sync.isPending || actions.importFile.isPending;
-  const scopeKeys = source.scopes.map((scope) => `${scope.catalog}.${scope.schema}`);
+  const scopeKeys = source.scopes.map(ruleKey);
+  const onJob = (label: string, jobId: number) => setActiveJob({ id: jobId, label });
 
   return (
     <Panel
@@ -90,8 +93,11 @@ export function SourceCard({ source }: { source: SourceSummary }) {
           ) : null}
         </dl>
 
+        {isWarehouse ? <WarehousePanel source={source} busy={busy} onJob={onJob} /> : null}
+
         <fieldset className="scopes">
-          <legend className="ui-field__label">Escopos (catálogo.schema → domínio)</legend>
+          <legend className="ui-field__label">O que é publicado (seleção → domínio)</legend>
+          {source.scopes.length === 0 ? <span className="small muted">Nada selecionado ainda: a fonte não sincroniza.</span> : null}
           {source.scopes.map((scope, index) => {
             const key = scopeKeys[index] as string;
             return (
@@ -99,7 +105,7 @@ export function SourceCard({ source }: { source: SourceSummary }) {
                 key={key}
                 label={
                   <>
-                    <code>{key}</code> <span className="muted">→ {scope.domain}</span>
+                    <code>{key}</code> <span className="muted">→ {scope.domain}</span> <span className="xsmall muted">({describeRule(scope)})</span>
                   </>
                 }
                 checked={selectedScopes.includes(key)}
@@ -108,11 +114,11 @@ export function SourceCard({ source }: { source: SourceSummary }) {
               />
             );
           })}
-          {isWarehouse ? <span className="xsmall muted">Nenhum selecionado = sincronizar todos os escopos.</span> : null}
+          {isWarehouse && source.scopes.length ? <span className="xsmall muted">Nenhuma marcada = sincronizar todas as seleções.</span> : null}
         </fieldset>
 
-        <Disclosure summary="Gerenciar escopos (descobrir, incluir, remover)">
-          <ScopesManager source={source} busy={busy} onJob={(label, jobId) => setActiveJob({ id: jobId, label })} />
+        <Disclosure summary="Selecionar o que publicar (catálogos, schemas, tabelas e filtros)">
+          <ScopesManager source={source} busy={busy} onJob={onJob} />
         </Disclosure>
 
         <div className="cluster">
@@ -123,8 +129,14 @@ export function SourceCard({ source }: { source: SourceSummary }) {
               </Button>
               <Button
                 variant="primary"
-                disabled={busy || source.status !== "active"}
-                title={source.status !== "active" ? "Teste a conexão: a fonte fica ativa quando todas as verificações passam." : undefined}
+                disabled={busy || source.status !== "active" || source.scopes.length === 0}
+                title={
+                  source.status !== "active"
+                    ? "Teste a conexão: a fonte fica ativa quando todas as verificações passam."
+                    : source.scopes.length === 0
+                      ? "Selecione o que publicar antes de sincronizar."
+                      : undefined
+                }
                 onClick={() => void launch("Sincronização", actions.sync.mutateAsync(selectedScopes))}
               >
                 Sincronizar agora

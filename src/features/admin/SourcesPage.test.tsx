@@ -2,10 +2,16 @@ import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it } from "vitest";
 
-import type { ScopesOverview, SourceSummary } from "@/api/types";
+import type { DiscoveredObjects, ScopeConfig, ScopesOverview, SourceSummary, Warehouse } from "@/api/types";
 import { ApiError } from "@/core/http/apiError";
 import { FakeHttpClient } from "@/test/fakeHttpClient";
 import { renderApp } from "@/test/renderApp";
+
+const ALL = { tables: null, exclude: [], table_types: null, formats: null };
+const CREDIT_RISK: ScopeConfig = { catalog: "workspace", schema: "credit_risk", domain: "financeiro", ...ALL };
+const HEALTH: ScopeConfig = { catalog: "workspace", schema: "health", domain: "saude", ...ALL };
+const STARTER: Warehouse = { id: "w1", name: "Starter", state: "STOPPED", size: "2X-Small", type: "PRO", serverless: true, http_path: "/sql/1.0/warehouses/w1" };
+const BIG: Warehouse = { ...STARTER, id: "w2", name: "Grande", state: "RUNNING", size: "Large", http_path: "/sql/1.0/warehouses/w2" };
 
 const SOURCE: SourceSummary = {
   id: "dbx-free-lab",
@@ -13,11 +19,10 @@ const SOURCE: SourceSummary = {
   environment: "lab",
   kind: "databricks_sql",
   host: "dbc.cloud.databricks.com",
+  http_path: STARTER.http_path,
+  warehouses: { listed_at: "2026-10-16T12:00:00Z", items: [STARTER], error: null },
   auth_method: "pat",
-  scopes: [
-    { catalog: "workspace", schema: "credit_risk", domain: "financeiro" },
-    { catalog: "workspace", schema: "health", domain: "saude" },
-  ],
+  scopes: [CREDIT_RISK, HEALTH],
   schedule_time: null,
   schedule_tz: "America/Sao_Paulo",
   owner: "voce@exemplo.local",
@@ -28,18 +33,45 @@ const SOURCE: SourceSummary = {
 
 const OVERVIEW: ScopesOverview = {
   source_id: "dbx-free-lab",
+  http_path: STARTER.http_path,
+  warehouses: SOURCE.warehouses,
   discovered_at: "2026-10-12T12:00:00Z",
   discovery_truncated: false,
+  objects_truncated: false,
   discovery_errors: [{ catalog: "sem_acesso", error: "ServerOperationError" }],
-  scopes: [
-    { scope: "workspace.credit_risk", catalog: "workspace", schema: "credit_risk", tables: 4, catalog_comment: "Área de trabalho compartilhada",
-      schema_comment: null, configured: true, domain: "financeiro", visible: true },
-    { scope: "workspace.health", catalog: "workspace", schema: "health", tables: null, catalog_comment: null, schema_comment: null,
-      configured: true, domain: "saude", visible: false },
-    { scope: "workspace.marketing", catalog: "workspace", schema: "marketing", tables: 9, catalog_comment: "Área de trabalho compartilhada",
-      schema_comment: "Campanhas e leads do CRM", configured: false, domain: null, visible: true },
+  catalogs: [
+    {
+      catalog: "workspace",
+      comment: "Área de trabalho compartilhada",
+      rule: null,
+      schemas: [
+        { schema: "credit_risk", comment: null, tables: 3, types: { MANAGED: 1, EXTERNAL: 1, VIEW: 1 }, formats: { DELTA: 1, PARQUET: 1 },
+          rule: CREDIT_RISK, owner: "workspace.credit_risk", domain: "financeiro", selected: 3 },
+        { schema: "marketing", comment: "Campanhas e leads do CRM", tables: 9, types: { MANAGED: 9 }, formats: { DELTA: 9 },
+          rule: null, owner: null, domain: null, selected: 0 },
+      ],
+    },
+  ],
+  rules: [
+    { ...CREDIT_RISK, key: "workspace.credit_risk", visible: true },
+    { ...HEALTH, key: "workspace.health", visible: false },
   ],
 };
+
+const OBJECTS: DiscoveredObjects = {
+  catalog: "workspace",
+  schema: "credit_risk",
+  owner: "workspace.credit_risk",
+  objects: [
+    { name: "emprestimos", table_type: "MANAGED", data_format: "DELTA", selected: true },
+    { name: "score_raw", table_type: "EXTERNAL", data_format: "PARQUET", selected: true },
+    { name: "vw_inadimplencia", table_type: "VIEW", data_format: null, selected: true },
+  ],
+};
+
+const RUNNING_JOB = (id: number, kind: string) => ({
+  id, kind, status: "running", attempts: 1, max_attempts: 1, last_error: null, result: null, created_at: "", started_at: null, finished_at: null, cancel_requested: false,
+});
 
 function sourcesHttp(extra: Record<string, unknown> = {}) {
   return new FakeHttpClient({
@@ -50,44 +82,89 @@ function sourcesHttp(extra: Record<string, unknown> = {}) {
   });
 }
 
-async function openScopes(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByText("Gerenciar escopos (descobrir, incluir, remover)"));
-  return (await screen.findByText("workspace.marketing")).closest("table") as HTMLElement;
+async function openSelection(user: ReturnType<typeof userEvent.setup>) {
+  await user.click(await screen.findByText("Selecionar o que publicar (catálogos, schemas, tabelas e filtros)"));
+  return {
+    rules: await screen.findByRole("region", { name: "Seleções configuradas" }),
+    origin: screen.getByRole("region", { name: "Na origem" }),
+  };
 }
 
-describe("Fontes: escopos sem mexer no código", () => {
-  it("descobre na origem e inclui um schema candidato com o domínio escolhido", async () => {
+const rowOf = (container: HTMLElement, text: string) => within(container).getByText(text).closest("tr") as HTMLElement;
+
+describe("Fontes: o que publicar, a partir da origem", () => {
+  it("mostra seleções e árvore, descobre e inclui o catálogo inteiro com filtros", async () => {
     const http = sourcesHttp({
       "POST /sources/dbx-free-lab/discover": { job_id: 7 },
-      "GET /jobs/7": { id: 7, kind: "source.discover", status: "running", attempts: 1, max_attempts: 1, last_error: null, result: null,
-        created_at: "", started_at: null, finished_at: null, cancel_requested: false },
-      "POST /sources/dbx-free-lab/scopes": { scope: "workspace.marketing", domain: "marketing", sync_job_id: null, note: null },
+      "GET /jobs/7": RUNNING_JOB(7, "source.discover"),
+      "POST /sources/dbx-free-lab/scopes": { scope: "workspace", domain: "comercial", sync_job_id: null, note: null },
     });
     const user = userEvent.setup();
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
-    const table = await openScopes(user);
+    const { rules, origin } = await openSelection(user);
 
-    expect(within(table).getAllByText("Configurado")).toHaveLength(1);
-    expect(within(table).getByText("Não visível")).toBeInTheDocument();
+    expect(within(rowOf(rules, "workspace.health")).getByText("Não visível")).toBeInTheDocument();
+    expect(within(rowOf(rules, "workspace.credit_risk")).getByText("Schema inteiro")).toBeInTheDocument();
     expect(screen.getByText(/Sem acesso a: sem_acesso/)).toBeInTheDocument();
 
     await user.type(screen.getByLabelText("Catálogos a descobrir"), "workspace");
     await user.click(screen.getByRole("button", { name: "Descobrir na origem" }));
     expect(http.callsTo("POST", "/sources/dbx-free-lab/discover")[0]?.options.json).toEqual({ catalogs: ["workspace"] });
 
-    const row = within(table).getByText("workspace.marketing").closest("tr") as HTMLElement;
-    expect(within(row).getByText("Disponível")).toBeInTheDocument();
-    // Comentários da origem ajudam a escolher o schema.
-    expect(within(row).getByText("Campanhas e leads do CRM")).toBeInTheDocument();
-    expect(within(row).getByText("Catálogo: Área de trabalho compartilhada")).toBeInTheDocument();
-    const health = within(table).getByText("workspace.health").closest("tr") as HTMLElement;
-    expect(within(health).queryByText(/Catálogo:/)).not.toBeInTheDocument();
-    await user.type(within(row).getByLabelText("Domínio de workspace.marketing"), "marketing");
-    await user.click(within(row).getByRole("button", { name: "Incluir" }));
+    // A árvore mostra o que a origem tem e quem decide cada schema.
+    const marketing = rowOf(origin, "marketing");
+    expect(within(marketing).getByText("Não selecionado")).toBeInTheDocument();
+    expect(within(marketing).getByText("Campanhas e leads do CRM")).toBeInTheDocument();
+    expect(within(rowOf(origin, "credit_risk")).getByText(/3 de 3/)).toBeInTheDocument();
+    expect(within(origin).getByText("Área de trabalho compartilhada")).toBeInTheDocument();
 
-    expect(await screen.findByText("Escopo workspace.marketing incluído no domínio marketing.")).toBeInTheDocument();
+    await user.click(within(origin).getByRole("button", { name: "Selecionar catálogo workspace inteiro" }));
+    const form = screen.getByRole("form", { name: "Catálogo workspace inteiro" });
+    await user.type(within(form).getByLabelText("Domínio"), "comercial");
+    await user.click(within(form).getByLabelText("View"));
+    await user.click(within(form).getByLabelText("Parquet"));
+    await user.click(within(form).getByLabelText("marketing"));
+    await user.click(within(form).getByRole("button", { name: "Incluir catálogo" }));
+
+    expect(await screen.findByText("Seleção workspace incluída no domínio comercial.")).toBeInTheDocument();
     expect(http.callsTo("POST", "/sources/dbx-free-lab/scopes")[0]?.options.json).toEqual({
-      catalog: "workspace", schema: "marketing", domain: "marketing", sync: false,
+      catalog: "workspace", schema: null, domain: "comercial", sync: false, exclude: ["marketing"],
+      table_types: ["MANAGED", "EXTERNAL", "MATERIALIZED_VIEW", "STREAMING_TABLE", "FOREIGN"], formats: ["CSV", "DELTA", "JSON"],
+    });
+  });
+
+  it("escolhe tabelas de um schema e cria a seleção de outro com todos os tipos", async () => {
+    const http = sourcesHttp({
+      "GET /sources/dbx-free-lab/objects": OBJECTS,
+      "PATCH /sources/dbx-free-lab/scopes/workspace.credit_risk": { ...CREDIT_RISK, key: "workspace.credit_risk", tables: ["emprestimos", "vw_inadimplencia"] },
+      "POST /sources/dbx-free-lab/scopes": { scope: "workspace.marketing", domain: "marketing", sync_job_id: null, note: null },
+    });
+    const user = userEvent.setup();
+    renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
+    const { origin } = await openSelection(user);
+
+    await user.click(within(origin).getByRole("button", { name: "Escolher tabelas de workspace.credit_risk" }));
+    const list = await screen.findByRole("list", { name: "Objetos de workspace.credit_risk" });
+    expect(http.callsTo("GET", "/sources/dbx-free-lab/objects")[0]?.options.query).toEqual({ catalog: "workspace", schema: "credit_risk" });
+    expect(within(list).getByText("Tabela externa")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Só as marcadas" }));
+    await user.click(within(list).getByLabelText(/score_raw/));
+    expect(screen.getByText("2 de 3 selecionado(s)")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Salvar seleção" }));
+
+    expect(await screen.findByText("Seleção de workspace.credit_risk salva.")).toBeInTheDocument();
+    expect(http.callsTo("PATCH", "/sources/dbx-free-lab/scopes/workspace.credit_risk")[0]?.options.json).toEqual({
+      tables: ["emprestimos", "vw_inadimplencia"], exclude: [],
+    });
+
+    await user.click(within(origin).getByRole("button", { name: "Selecionar schema workspace.marketing" }));
+    const form = screen.getByRole("form", { name: "Schema workspace.marketing inteiro" });
+    await user.type(within(form).getByLabelText("Domínio"), "marketing");
+    await user.click(within(form).getByRole("button", { name: "Incluir schema" }));
+    expect(await screen.findByText("Seleção workspace.marketing incluída no domínio marketing.")).toBeInTheDocument();
+    // Todos os tipos e formatos marcados = sem filtro: o que surgir na origem também entra.
+    expect(http.callsTo("POST", "/sources/dbx-free-lab/scopes")[0]?.options.json).toEqual({
+      catalog: "workspace", schema: "marketing", domain: "marketing", table_types: null, formats: null, exclude: [], sync: false,
     });
   });
 
@@ -95,41 +172,43 @@ describe("Fontes: escopos sem mexer no código", () => {
     const http = sourcesHttp({
       "DELETE /sources/dbx-free-lab/scopes/workspace.health": { scope: "workspace.health", assets_kept: 3 },
       "PATCH /sources/dbx-free-lab/scopes/workspace.credit_risk": () =>
-        new ApiError(409, "conflict", "escopo já tem ativos importados: o domínio deles não muda com a configuração"),
+        new ApiError(409, "conflict", "seleção já tem ativos importados: o domínio deles não muda com a configuração"),
     });
     const user = userEvent.setup();
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
-    const table = await openScopes(user);
+    const { rules } = await openSelection(user);
 
-    await user.click(within(table).getByRole("button", { name: "Remover workspace.health" }));
+    await user.click(within(rules).getByRole("button", { name: "Remover workspace.health" }));
     expect(http.callsTo("DELETE", "/sources/dbx-free-lab/scopes/workspace.health")).toHaveLength(0);
-    await user.click(within(table).getByRole("button", { name: "Confirmar remoção" }));
-    expect(await screen.findByText(/Escopo workspace.health removido. 3 ativo\(s\) já importado\(s\) continuam no catálogo./)).toBeInTheDocument();
+    await user.click(within(rules).getByRole("button", { name: "Confirmar remoção" }));
+    expect(await screen.findByText(/Seleção workspace.health removida. 3 ativo\(s\) já importado\(s\) continuam no catálogo./)).toBeInTheDocument();
 
-    const row = within(table).getByText("workspace.credit_risk").closest("tr") as HTMLElement;
-    await user.click(within(row).getByRole("button", { name: "Alterar domínio" }));
-    const input = within(row).getByLabelText("Domínio de workspace.credit_risk");
-    await user.clear(input);
-    await user.type(input, "comercial");
-    await user.click(within(row).getByRole("button", { name: "Salvar domínio" }));
+    await user.click(within(rules).getByRole("button", { name: "Editar workspace.credit_risk" }));
+    const form = screen.getByRole("form", { name: "Editar workspace.credit_risk" });
+    const domain = within(form).getByLabelText("Domínio");
+    await user.clear(domain);
+    await user.type(domain, "comercial");
+    await user.click(within(form).getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText(/o domínio deles não muda com a configuração/)).toBeInTheDocument();
-    expect(http.callsTo("PATCH", "/sources/dbx-free-lab/scopes/workspace.credit_risk")[0]?.options.json).toEqual({ domain: "comercial" });
+    expect(http.callsTo("PATCH", "/sources/dbx-free-lab/scopes/workspace.credit_risk")[0]?.options.json).toEqual({
+      table_types: null, formats: null, exclude: [], domain: "comercial",
+    });
   });
 
-  it("inclui escopo digitado e já pede a sincronização", async () => {
+  it("inclui seleção digitada e já pede a sincronização", async () => {
     const http = sourcesHttp({
       "POST /sources/dbx-free-lab/scopes": { scope: "usecase_factory.factory", domain: "producao", sync_job_id: null, note: "fonte paused: sincronização não enfileirada" },
     });
     const user = userEvent.setup();
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
-    await openScopes(user);
+    await openSelection(user);
 
     await user.click(screen.getByLabelText("Sincronizar ao incluir (fonte ativa)"));
-    const form = screen.getByRole("form", { name: "Adicionar escopo manualmente" });
+    const form = screen.getByRole("form", { name: "Adicionar seleção manualmente" });
     await user.type(within(form).getByLabelText("Catálogo"), "usecase_factory");
     await user.type(within(form).getByLabelText("Schema"), "factory");
     await user.type(within(form).getByLabelText("Domínio"), "producao");
-    await user.click(within(form).getByRole("button", { name: "Adicionar escopo" }));
+    await user.click(within(form).getByRole("button", { name: "Adicionar seleção" }));
 
     expect(await screen.findByText(/fonte paused: sincronização não enfileirada/)).toBeInTheDocument();
     expect(http.callsTo("POST", "/sources/dbx-free-lab/scopes")[0]?.options.json).toEqual({
@@ -138,9 +217,47 @@ describe("Fontes: escopos sem mexer no código", () => {
   });
 });
 
+describe("Fontes: conexão automática", () => {
+  const NEW_SOURCE: SourceSummary = {
+    ...SOURCE, id: "dbx-novo", name: "Databricks novo", http_path: null, scopes: [], status: "paused",
+    warehouses: { listed_at: "2026-10-16T12:00:00Z", items: [STARTER, BIG], error: null },
+  };
+
+  it("com vários SQL Warehouses, o administrador escolhe na tela", async () => {
+    const http = new FakeHttpClient({
+      "GET /sources": [NEW_SOURCE],
+      "GET /sources/dbx-novo/sync-runs": [],
+      "GET /sources/dbx-novo/scopes": { ...OVERVIEW, source_id: "dbx-novo", http_path: null, discovered_at: null, discovery_errors: [], catalogs: [], rules: [] },
+      "POST /sources/dbx-novo/warehouse": { warehouse: BIG, jobs: { test: 11, discover: 12 } },
+      "GET /jobs/12": RUNNING_JOB(12, "source.discover"),
+    });
+    const user = userEvent.setup();
+    renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
+
+    expect(await screen.findByText("Há mais de um SQL Warehouse. Escolha qual a Clara deve usar para ler os metadados:")).toBeInTheDocument();
+    expect(screen.getByText("Nada selecionado ainda: a fonte não sincroniza.")).toBeInTheDocument();
+    expect(screen.getByText("Escolha o SQL Warehouse para a Clara descobrir o que há na origem.")).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Usar o SQL Warehouse Grande" }));
+
+    expect(await screen.findByText(/SQL Warehouse Grande escolhido. A Clara vai testar a conexão e descobrir a origem./)).toBeInTheDocument();
+    expect(http.callsTo("POST", "/sources/dbx-novo/warehouse")[0]?.options.json).toEqual({ warehouse_id: "w2" });
+  });
+
+  it("falha ao listar os warehouses aparece com o que fazer", async () => {
+    const failed = { ...NEW_SOURCE, warehouses: { listed_at: "2026-10-16T12:00:00Z", items: [], error: "PermissionDenied" } };
+    const http = new FakeHttpClient({
+      "GET /sources": [failed],
+      "GET /sources/dbx-novo/sync-runs": [],
+      "GET /sources/dbx-novo/scopes": { ...OVERVIEW, source_id: "dbx-novo", http_path: null, discovered_at: null, discovery_errors: [], catalogs: [], rules: [] },
+    });
+    renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
+    expect(await screen.findByText(/Não foi possível listar os SQL Warehouses \(PermissionDenied\)/)).toBeInTheDocument();
+  });
+});
+
 describe("Fontes: cadastro pela tela", () => {
-  it("valida antes de enviar e cadastra Databricks com o primeiro escopo", async () => {
-    const http = sourcesHttp({ "POST /sources": { id: "dbx-vendas" } });
+  it("cadastra Databricks só com host e credencial; a Clara segue sozinha", async () => {
+    const http = sourcesHttp({ "POST /sources": { id: "dbx-vendas", jobs: { connect: 5 } } });
     const user = userEvent.setup();
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
 
@@ -156,28 +273,27 @@ describe("Fontes: cadastro pela tela", () => {
     await user.type(within(form).getByLabelText("Nome"), "Databricks Vendas");
     await user.selectOptions(within(form).getByLabelText("Ambiente"), "prod");
     await user.type(within(form).getByLabelText("Host"), "adb-1.azuredatabricks.net");
-    await user.type(within(form).getByLabelText("HTTP path"), "/sql/1.0/warehouses/abc");
     await user.selectOptions(within(form).getByLabelText("Autenticação"), "pat");
     await user.type(within(form).getByLabelText("Referência da credencial"), "env:DBX_VENDAS");
-    await user.type(within(form).getByLabelText("Catálogo"), "lab_dw");
-    await user.type(within(form).getByLabelText("Schema"), "vendas");
+    // Seleção é opcional, mas se começar, precisa de catálogo.
     await user.type(within(form).getByLabelText("Domínio"), "financeiro");
     await user.click(within(form).getByRole("button", { name: "Cadastrar fonte" }));
     expect(within(form).getByText("Token pessoal não é permitido em produção.")).toBeInTheDocument();
+    expect(within(form).getByText("Informe o catálogo.")).toBeInTheDocument();
 
+    await user.clear(within(form).getByLabelText("Domínio"));
     await user.selectOptions(within(form).getByLabelText("Autenticação"), "oauth_m2m");
     await user.click(within(form).getByRole("button", { name: "Cadastrar fonte" }));
-    expect(await screen.findByText(/Fonte dbx-vendas cadastrada. Teste a conexão/)).toBeInTheDocument();
+    expect(await screen.findByText(/Fonte dbx-vendas cadastrada. A Clara está procurando o SQL Warehouse/)).toBeInTheDocument();
     expect(http.callsTo("POST", "/sources")[0]?.options.json).toEqual({
       id: "dbx-vendas", name: "Databricks Vendas", environment: "prod", kind: "databricks_sql", host: "adb-1.azuredatabricks.net",
-      http_path: "/sql/1.0/warehouses/abc", auth_method: "oauth_m2m", credential_ref: "env:DBX_VENDAS",
-      scopes: [{ catalog: "lab_dw", schema: "vendas", domain: "financeiro" }], schedule_time: undefined, owner: "ana.admin",
+      http_path: undefined, auth_method: "oauth_m2m", credential_ref: "env:DBX_VENDAS", scopes: [], schedule_time: undefined, owner: "ana.admin",
     });
     expect(screen.queryByRole("form", { name: "Cadastrar fonte" })).not.toBeInTheDocument();
   });
 
-  it("fonte por arquivo não pede conexão e mostra a recusa do backend", async () => {
-    const http = sourcesHttp({ "POST /sources": () => new ApiError(422, "validation_error", "identificador de escopo inválido") });
+  it("fonte por arquivo não pede conexão, exige a seleção e mostra a recusa do backend", async () => {
+    const http = sourcesHttp({ "POST /sources": () => new ApiError(422, "validation_error", "catálogo inválido") });
     const user = userEvent.setup();
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
 
@@ -187,12 +303,17 @@ describe("Fontes: cadastro pela tela", () => {
     expect(within(form).queryByLabelText("Host")).not.toBeInTheDocument();
     await user.type(within(form).getByLabelText("Identificador"), "arquivos-rh");
     await user.type(within(form).getByLabelText("Nome"), "Arquivos RH");
+    await user.click(within(form).getByRole("button", { name: "Cadastrar fonte" }));
+    expect(within(form).getByText("Informe o catálogo.")).toBeInTheDocument();
+
     await user.type(within(form).getByLabelText("Catálogo"), "rh");
     await user.type(within(form).getByLabelText("Schema"), "pessoas");
     await user.type(within(form).getByLabelText("Domínio"), "rh");
     await user.click(within(form).getByRole("button", { name: "Cadastrar fonte" }));
 
-    expect(await screen.findByText(/identificador de escopo inválido/)).toBeInTheDocument();
-    expect(http.callsTo("POST", "/sources")[0]?.options.json).toMatchObject({ kind: "file", auth_method: "none", host: undefined, credential_ref: undefined });
+    expect(await screen.findByText(/catálogo inválido/)).toBeInTheDocument();
+    expect(http.callsTo("POST", "/sources")[0]?.options.json).toMatchObject({
+      kind: "file", auth_method: "none", host: undefined, credential_ref: undefined, scopes: [{ catalog: "rh", schema: "pessoas", domain: "rh" }],
+    });
   });
 });
