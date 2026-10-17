@@ -183,7 +183,10 @@ export function DraftView({ draft, evidences, editing }: { draft: Draft; evidenc
               <p>{content.plain_language_summary}</p>
             </TextRow>
           )}
-          {editable("exampleQuestions", "Perguntas que esta ficha responde", { rows: 3, hint: "Uma por linha, como um usuário perguntaria. Ajudam a busca a encontrar a ficha." }) ?? (
+          {editable("exampleQuestions", "Perguntas que esta ficha responde", {
+            rows: 6,
+            hint: `Uma por linha, como um usuário perguntaria. Ajudam a busca a encontrar a ficha. ${countLines(editing?.form.exampleQuestions)} pergunta(s); com o Genie, ao menos 10.`,
+          }) ?? (
             <TextRow label="Perguntas que esta ficha responde" empty={!content.example_questions.length}>
               <ul className="small">{content.example_questions.map((question) => <li key={question}>{question}</li>)}</ul>
             </TextRow>
@@ -300,6 +303,10 @@ function ColumnNotes({ notes, resolve }: { notes: Draft["content"]["column_notes
       {notes.length > COLUMNS_SHOWN_OPEN ? <Disclosure summary={`Mostrar as ${notes.length} colunas`}>{table}</Disclosure> : table}
     </div>
   );
+}
+
+function countLines(text: string | undefined): number {
+  return (text ?? "").split("\n").filter((line) => line.trim()).length;
 }
 
 /** Contexto alterado (comentários de catálogo/schema, configuração dos espaços Genie) é anexado à
