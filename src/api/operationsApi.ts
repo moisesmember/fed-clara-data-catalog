@@ -5,6 +5,8 @@ import { callEndpoint } from "./request";
 import type {
   AuditEvent,
   DiscoveredObjects,
+  GenieSpace,
+  GenieSpaceInput,
   GovernanceDashboard,
   GraphMetrics,
   Job,
@@ -43,6 +45,10 @@ export interface OperationsApi {
   /** Escolhe um dos SQL Warehouses listados; o backend testa e descobre em seguida. */
   setWarehouse(sourceId: string, warehouseId: string): Promise<WarehouseSelected>;
   refreshWarehouses(sourceId: string): Promise<JobAccepted>;
+  /** Atalhos para espaços Genie da fonte (só o vínculo: a Clara não chama o Genie). */
+  genieSpaces(sourceId: string): Promise<GenieSpace[]>;
+  addGenieSpace(sourceId: string, space: GenieSpaceInput): Promise<{ id: number }>;
+  removeGenieSpace(sourceId: string, genieId: number): Promise<{ ok: boolean }>;
   job(jobId: number): Promise<Job>;
   cancelJob(jobId: number): Promise<{ ok: boolean }>;
   audit(filters: { entityType?: string; entityId?: string }, page: Page): Promise<AuditEvent[]>;
@@ -72,6 +78,9 @@ export function createOperationsApi(http: HttpClient): OperationsApi {
     setWarehouse: (sourceId, warehouseId) =>
       callEndpoint(http, endpoints.sourceWarehouse, { source_id: sourceId }, { json: { warehouse_id: warehouseId } }),
     refreshWarehouses: (sourceId) => callEndpoint(http, endpoints.sourceWarehousesRefresh, { source_id: sourceId }),
+    genieSpaces: (sourceId) => callEndpoint(http, endpoints.sourceGenieSpaces, { source_id: sourceId }),
+    addGenieSpace: (sourceId, space) => callEndpoint(http, endpoints.sourceGenieSpaceAdd, { source_id: sourceId }, { json: space }),
+    removeGenieSpace: (sourceId, genieId) => callEndpoint(http, endpoints.sourceGenieSpaceRemove, { source_id: sourceId, genie_id: genieId }),
     job: (jobId) => callEndpoint(http, endpoints.job, { job_id: jobId }),
     cancelJob: (jobId) => callEndpoint(http, endpoints.jobCancel, { job_id: jobId }),
     audit: (filters, page) =>

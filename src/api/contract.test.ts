@@ -55,6 +55,11 @@ describe.skipIf(!apiUrl)("contrato com o backend (openapi.json)", () => {
     expect(changes.filter((field) => !Object.keys(schemas.ScopeUpdateRequest?.properties ?? {}).includes(field))).toEqual([]);
   });
 
+  it("campos do atalho Genie existem em GenieSpaceRequest", async () => {
+    const props = Object.keys((await load()).components.schemas.GenieSpaceRequest?.properties ?? {});
+    expect(["space_id", "title", "description", "domains"].filter((field) => !props.includes(field))).toEqual([]);
+  });
+
   it("campos enviados na revisão existem em ReviewSubmission", async () => {
     const props = Object.keys((await load()).components.schemas.ReviewSubmission?.properties ?? {});
     const sent = ["decision", "expected_draft_revision", "expected_asset_version_id", "edits", "confirmed_owner", "visibility", "limitations_none_known", "change_kind", "notes", "publish"];

@@ -13,6 +13,7 @@ import { Alert, EmptyState, QueryView } from "@/shared/ui/states";
 import { jobStatusLabel } from "@/shared/ui/statusBadges";
 
 import { CapabilityChecklist } from "./CapabilityChecklist";
+import { GenieSpacesManager } from "./GenieSpacesManager";
 import { useSourceActions, useSyncRuns } from "./hooks";
 import { ScopesManager } from "./ScopesManager";
 import { describeRule, ruleKey } from "./selection";
@@ -120,6 +121,12 @@ export function SourceCard({ source }: { source: SourceSummary }) {
         <Disclosure summary="Selecionar o que publicar (catálogos, schemas, tabelas e filtros)">
           <ScopesManager source={source} busy={busy} onJob={onJob} />
         </Disclosure>
+
+        {isWarehouse ? (
+          <Disclosure summary="Atalhos para o Genie (dados sem ficha e pedidos de valor)">
+            <GenieSpacesManager source={source} />
+          </Disclosure>
+        ) : null}
 
         <div className="cluster">
           {isWarehouse ? (

@@ -2,6 +2,7 @@ import { Link } from "react-router";
 
 import type { AnswerSuggestion, AskResponse, Citation } from "@/api/types";
 import { formatDuration } from "@/shared/format";
+import { GenieShortcuts } from "@/shared/genie/GenieShortcuts";
 import { Badge, Button } from "@/shared/ui/primitives";
 import { Alert } from "@/shared/ui/states";
 import { TrustBadge } from "@/shared/ui/statusBadges";
@@ -108,6 +109,7 @@ export function AnswerView({ response: raw, question, onChoose, technical = fals
             <RequestHelpButton question={question} />
           </>
         )}
+        <GenieShortcuts spaces={response.genie_spaces} question={question} intro="Para o valor em si, pergunte ao Genie, o assistente de dados do Databricks:" />
       </article>
     );
   }
@@ -119,6 +121,11 @@ export function AnswerView({ response: raw, question, onChoose, technical = fals
           <strong>Não encontrei uma ficha que responda a isso.</strong> {response.answer}
         </Alert>
         <p className="small muted">Dica: descreva o processo de negócio (ex.: “vendas da loja”, “cadastro de clientes”) ou navegue pelos assuntos.</p>
+        <GenieShortcuts
+          spaces={response.genie_spaces}
+          question={question}
+          intro="Talvez este dado ainda não esteja catalogado. Você pode perguntar direto ao Genie, o assistente de dados do Databricks:"
+        />
         <RequestHelpButton question={question} />
       </article>
     );

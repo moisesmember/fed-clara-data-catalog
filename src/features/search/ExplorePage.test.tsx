@@ -16,6 +16,8 @@ const metrics = { wall_ms: 80, llm_calls: 1, docs_retrieved: 2, context_chars: 9
 const option = (asset_id: number, business_name: string) => ({
   asset_id, business_name, fqn: `lab.vendas.t${asset_id}`, owner: "gerencia.comercial", subject: "Vendas", domain: "financeiro", trust_status: "not_validated",
 });
+const genie = { id: 1, title: "Vendas e faturamento", description: "Pergunte valores de vendas.", domains: ["financeiro"],
+  url: "https://dbc.cloud.databricks.com/genie/rooms/01f0a1b2c3d4e5f60718293a4b5c6d7e" };
 const browse = {
   domains: [
     {
@@ -187,6 +189,47 @@ describe("Explorar (perguntas)", () => {
     await user.click(screen.getByRole("button", { name: "Perguntar" }));
     expect(await screen.findByText(/Eu não calculo valores nem gero consultas/)).toBeInTheDocument();
     expect(screen.getByText(/responsável: gerencia.comercial/)).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Ver ficha →" })).toHaveAttribute("href", "/fichas/3");
+  });
+
+  it("sem ficha, oferece o Genie do Databricks e copia a pergunta sem enviá-la", async () => {
+    const http = new FakeHttpClient({
+      "GET /catalog/browse": browse,
+      "POST /ask": askResponder(() => ({ status: "no_evidence", answer: "Nada.", evidence_status: "none", genie_spaces: [genie] })),
+    });
+    const user = userEvent.setup();
+    const writeText = vi.spyOn(navigator.clipboard, "writeText").mockResolvedValue();
+    renderApp({ path: "/explorar?aba=perguntar", subject: "joao.consumidor", http });
+
+    await user.type(await screen.findByLabelText("O que você quer saber sobre os dados?"), "chamados abertos no help desk");
+    await user.click(screen.getByRole("button", { name: "Perguntar" }));
+    const genieRegion = await screen.findByRole("region", { name: "Perguntar ao Genie" });
+    expect(within(genieRegion).getByText(/ainda não esteja catalogado/)).toBeInTheDocument();
+    const link = within(genieRegion).getByRole("link", { name: "Abrir no Genie: Vendas e faturamento" });
+    expect(link).toHaveAttribute("href", genie.url);
+    expect(link).toHaveAttribute("target", "_blank");
+    expect(link).toHaveAttribute("rel", "noopener noreferrer");
+    await user.click(within(genieRegion).getByRole("button", { name: "Copiar a pergunta" }));
+    expect(writeText).toHaveBeenCalledWith("chamados abertos no help desk");
+    expect(await within(genieRegion).findByRole("button", { name: "Pergunta copiada" })).toBeInTheDocument();
+    // A Clara não chama o Genie: nenhuma requisição além da pergunta à própria Clara.
+    expect(http.calls.filter((call) => call.path.includes("genie"))).toHaveLength(0);
+  });
+
+  it("pedido de valor mostra a ficha e também o Genie", async () => {
+    const http = new FakeHttpClient({
+      "GET /catalog/browse": browse,
+      "POST /ask": askResponder(() => ({
+        status: "out_of_scope", answer: "…", evidence_status: "none", intent: "value_request", suggestions: [option(3, "Faturamento por item")], genie_spaces: [genie],
+      })),
+    });
+    const user = userEvent.setup();
+    renderApp({ path: "/explorar?aba=perguntar", subject: "joao.consumidor", http });
+
+    await user.type(await screen.findByLabelText("O que você quer saber sobre os dados?"), "quanto faturamos ontem?");
+    await user.click(screen.getByRole("button", { name: "Perguntar" }));
+    expect(await screen.findByRole("link", { name: "Abrir no Genie: Vendas e faturamento" })).toBeInTheDocument();
+    expect(screen.getByText(/Para o valor em si, pergunte ao Genie/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Ver ficha →" })).toHaveAttribute("href", "/fichas/3");
   });
 });

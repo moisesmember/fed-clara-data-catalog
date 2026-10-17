@@ -88,8 +88,36 @@ export interface AnswerSuggestion {
   trust_status: TrustStatus;
 }
 
+/** Atalho para um espaço Genie do Databricks (ADR 0016 do backend). A Clara só aponta: quem
+ *  responde é o Genie, no Databricks, com as permissões de quem pergunta. */
+export interface GenieOffer {
+  id: number;
+  title: string;
+  description: string | null;
+  domains: string[];
+  url: string;
+}
+
+/** Espaço Genie registrado numa fonte (administração). */
+export interface GenieSpace extends GenieOffer {
+  source_id: string;
+  space_id: string;
+  created_by: string;
+  created_at: string;
+}
+
+export interface GenieSpaceInput {
+  space_id: string;
+  title: string;
+  description?: string;
+  /** Onde o atalho aparece; `["*"]` = para quem lê qualquer domínio. */
+  domains: string[];
+}
+
 export interface AskResponse {
   status: "ok" | "no_evidence" | "out_of_scope" | "clarify" | null;
+  /** Atalhos para o Genie quando a Clara não tem a resposta (pedido de valor, dado não catalogado). */
+  genie_spaces?: GenieOffer[];
   suggestions: AnswerSuggestion[];
   expanded_terms: string[];
   intent: "discovery" | "value_request" | null;
@@ -630,6 +658,8 @@ export interface HelpRequest {
   status: "open" | "resolved";
   resolution_note: string | null;
   resolved_by: string | null;
+  /** Espaços Genie dos domínios do pedido, para o curador investigar onde está o dado. */
+  genie_spaces?: GenieOffer[];
 }
 
 export interface Page {

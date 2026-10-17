@@ -1,7 +1,7 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/api/queryKeys";
-import type { Page, ScopeChanges, ScopeInput, ScopesOverview, SourceInput, SourceSummary } from "@/api/types";
+import type { GenieSpaceInput, Page, ScopeChanges, ScopeInput, ScopesOverview, SourceInput, SourceSummary } from "@/api/types";
 import { useServices } from "@/core/services";
 
 /** Fonte Databricks recém-cadastrada que ainda espera a listagem de SQL Warehouses. */
@@ -105,6 +105,21 @@ export function useScopeActions(sourceId: string) {
     }),
     remove: useMutation({ mutationFn: (scope: string) => operations.removeScope(sourceId, scope), onSuccess: refresh }),
     discover: useMutation({ mutationFn: (catalogs?: string[]) => operations.discover(sourceId, catalogs) }),
+  };
+}
+
+export function useGenieSpaces(sourceId: string) {
+  const { operations } = useServices();
+  return useQuery({ queryKey: queryKeys.genieSpaces(sourceId), queryFn: () => operations.genieSpaces(sourceId) });
+}
+
+export function useGenieActions(sourceId: string) {
+  const { operations } = useServices();
+  const queryClient = useQueryClient();
+  const refresh = () => queryClient.invalidateQueries({ queryKey: queryKeys.genieSpaces(sourceId) });
+  return {
+    add: useMutation({ mutationFn: (space: GenieSpaceInput) => operations.addGenieSpace(sourceId, space), onSuccess: refresh }),
+    remove: useMutation({ mutationFn: (genieId: number) => operations.removeGenieSpace(sourceId, genieId), onSuccess: refresh }),
   };
 }
 

@@ -133,7 +133,9 @@ respondem 404, e a UI mostra uma mensagem neutra. O cache é descartado ao troca
 - A tela de fontes cadastra fontes novas (Databricks só com host e credencial: a Clara encontra o
   SQL Warehouse ou pede a escolha, testa e descobre a origem), seleciona o que publicar numa árvore
   catálogo → schema → tabela, com filtros de tipo (gerenciada, externa, view...) e formato (Delta,
-  Parquet...), testa, sincroniza e importa arquivos. Editar conexão, credencial, agenda ou limites de uma fonte existente ainda é
+  Parquet...), registra atalhos para espaços Genie do Databricks, testa, sincroniza e importa
+  arquivos. Os atalhos aparecem na resposta sem ficha ou de valor e na ajuda do curador (só link e
+  cópia da pergunta; a interface não chama o Genie). Editar conexão, credencial, agenda ou limites de uma fonte existente ainda é
   pela API (`POST /sources` com o mesmo `id` substitui a configuração).
 - Edição de rascunho cobre os campos principais (nome, descrição, assunto, granularidade,
   sinônimos, limitações); significados de coluna são revisados pela regeneração ou pela API.

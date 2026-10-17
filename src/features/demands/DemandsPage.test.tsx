@@ -30,7 +30,8 @@ describe("Demandas dos usuários (curadoria)", () => {
     const http = new FakeHttpClient({
       "GET /insights/unanswered": [],
       "GET /help-requests": [
-        { id: 5, created_at: "2026-10-12T03:00:00Z", requester: "joao.consumidor", question: "vendas por loja", asset_id: 3, domains: ["financeiro"], status: "open", resolution_note: null, resolved_by: null },
+        { id: 5, created_at: "2026-10-12T03:00:00Z", requester: "joao.consumidor", question: "vendas por loja", asset_id: 3, domains: ["financeiro"], status: "open", resolution_note: null, resolved_by: null,
+          genie_spaces: [{ id: 1, title: "Vendas e faturamento", description: null, domains: ["financeiro"], url: "https://dbc.cloud.databricks.com/genie/rooms/01f0a1b2c3d4e5f60718293a4b5c6d7e" }] },
       ],
       "POST /help-requests/5/resolve": { ok: true },
     });
@@ -38,6 +39,9 @@ describe("Demandas dos usuários (curadoria)", () => {
     renderApp({ path: "/curadoria/demandas?aba=ajuda", subject: "carlos.curador", http });
 
     expect(await screen.findByText("“vendas por loja”")).toBeInTheDocument();
+    // O curador investiga no Genie onde está o dado antes de responder.
+    expect(screen.getByRole("link", { name: "Abrir no Genie: Vendas e faturamento" })).toHaveAttribute("href", expect.stringContaining("/genie/rooms/"));
+    expect(screen.getByText(/Investigue no Genie onde está esse dado/)).toBeInTheDocument();
     await user.type(screen.getByLabelText("Resposta ao usuário"), "Use a ficha de faturamento.");
     await user.click(screen.getByRole("button", { name: "Marcar como resolvido" }));
     expect(await screen.findByText("Pedido resolvido.")).toBeInTheDocument();

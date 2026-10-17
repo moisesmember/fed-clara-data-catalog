@@ -78,6 +78,7 @@ function sourcesHttp(extra: Record<string, unknown> = {}) {
     "GET /sources": [SOURCE],
     "GET /sources/dbx-free-lab/sync-runs": [],
     "GET /sources/dbx-free-lab/scopes": OVERVIEW,
+    "GET /sources/dbx-free-lab/genie-spaces": [],
     ...extra,
   });
 }
@@ -228,6 +229,7 @@ describe("Fontes: conexão automática", () => {
       "GET /sources": [NEW_SOURCE],
       "GET /sources/dbx-novo/sync-runs": [],
       "GET /sources/dbx-novo/scopes": { ...OVERVIEW, source_id: "dbx-novo", http_path: null, discovered_at: null, discovery_errors: [], catalogs: [], rules: [] },
+      "GET /sources/dbx-novo/genie-spaces": [],
       "POST /sources/dbx-novo/warehouse": { warehouse: BIG, jobs: { test: 11, discover: 12 } },
       "GET /jobs/12": RUNNING_JOB(12, "source.discover"),
     });
@@ -249,9 +251,41 @@ describe("Fontes: conexão automática", () => {
       "GET /sources": [failed],
       "GET /sources/dbx-novo/sync-runs": [],
       "GET /sources/dbx-novo/scopes": { ...OVERVIEW, source_id: "dbx-novo", http_path: null, discovered_at: null, discovery_errors: [], catalogs: [], rules: [] },
+      "GET /sources/dbx-novo/genie-spaces": [],
     });
     renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
     expect(await screen.findByText(/Não foi possível listar os SQL Warehouses \(PermissionDenied\)/)).toBeInTheDocument();
+  });
+});
+
+describe("Fontes: atalhos para o Genie", () => {
+  it("registra um espaço a partir do link copiado do Genie e remove com confirmação", async () => {
+    const space = { id: 4, title: "Vendas e faturamento", description: null, domains: ["financeiro", "comercial"], source_id: "dbx-free-lab",
+      space_id: "01f0a1b2c3d4e5f60718293a4b5c6d7e", created_by: "ana.admin", created_at: "2026-10-17T10:00:00Z",
+      url: "https://dbc.cloud.databricks.com/genie/rooms/01f0a1b2c3d4e5f60718293a4b5c6d7e" };
+    const http = sourcesHttp({
+      "GET /sources/dbx-free-lab/genie-spaces": [space],
+      "POST /sources/dbx-free-lab/genie-spaces": { id: 5 },
+      "DELETE /sources/dbx-free-lab/genie-spaces/4": { ok: true },
+    });
+    const user = userEvent.setup();
+    renderApp({ path: "/admin/fontes", subject: "ana.admin", http });
+
+    await user.click(await screen.findByText("Atalhos para o Genie (dados sem ficha e pedidos de valor)"));
+    expect(await screen.findByRole("link", { name: "Vendas e faturamento" })).toHaveAttribute("href", space.url);
+    const form = screen.getByRole("form", { name: "Registrar espaço Genie" });
+    await user.type(within(form).getByLabelText("Espaço Genie"), "https://dbc.cloud.databricks.com/genie/rooms/01f0ffffeeeeddddccccbbbbaaaa9999?o=123");
+    await user.type(within(form).getByLabelText("Título"), "Dados gerais");
+    await user.type(within(form).getByLabelText("Domínios"), "*");
+    await user.click(within(form).getByRole("button", { name: "Registrar atalho" }));
+    expect(await screen.findByText("Atalho “Dados gerais” registrado.")).toBeInTheDocument();
+    expect(http.callsTo("POST", "/sources/dbx-free-lab/genie-spaces")[0]?.options.json).toEqual({
+      space_id: "01f0ffffeeeeddddccccbbbbaaaa9999", title: "Dados gerais", description: undefined, domains: ["*"],
+    });
+
+    await user.click(screen.getByRole("button", { name: "Remover atalho Vendas e faturamento" }));
+    await user.click(screen.getByRole("button", { name: "Confirmar remoção" }));
+    expect(await screen.findByText("Atalho “Vendas e faturamento” removido.")).toBeInTheDocument();
   });
 });
 

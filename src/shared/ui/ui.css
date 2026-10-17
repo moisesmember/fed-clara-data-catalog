@@ -455,3 +455,26 @@
 .kpi__value {
   font-size: var(--text-xl);
 }
+
+/* Atalhos para o Genie do Databricks (links externos com aparência de botão). */
+.genie-shortcuts {
+  padding: var(--space-3);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.genie-shortcuts__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: var(--space-2);
+}
+.genie-shortcuts__list li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  align-items: center;
+}
+.genie-shortcuts a.ui-button {
+  text-decoration: none;
+}

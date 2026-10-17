@@ -4,6 +4,7 @@ import { Link, useSearchParams } from "react-router";
 import type { HelpRequest } from "@/api/types";
 import { describeError } from "@/core/http/apiError";
 import { formatDateTime } from "@/shared/format";
+import { GenieShortcuts } from "@/shared/genie/GenieShortcuts";
 import { useNotify } from "@/shared/ui/notifications";
 import { Badge, Button, PageHeader, Panel, Segmented, Tabs, TextInput } from "@/shared/ui/primitives";
 import { EmptyState, QueryView } from "@/shared/ui/states";
@@ -188,6 +189,13 @@ function HelpRequestItem({ request }: { request: HelpRequest }) {
         ))}
         {request.asset_id ? <Link to={`/fichas/${request.asset_id}`}>Ficha relacionada →</Link> : null}
       </div>
+      {request.status === "open" ? (
+        <GenieShortcuts
+          spaces={request.genie_spaces}
+          question={request.question}
+          intro="Investigue no Genie onde está esse dado; se ele ainda não estiver catalogado, inclua a fonte e responda o pedido com a ficha."
+        />
+      ) : null}
       {request.status === "open" ? (
         <form
           className="cluster"
