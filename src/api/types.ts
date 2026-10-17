@@ -52,6 +52,11 @@ export interface SearchHit {
   asset_version_no: number;
   review_required: boolean;
   branches: string[];
+  /** Campos de exibição; podem faltar em versões anteriores da API. */
+  owner?: string;
+  subject?: string;
+  /** Resumo em linguagem simples ou, na falta dele, a descrição de negócio. */
+  summary?: string;
 }
 
 export interface SearchResponse {

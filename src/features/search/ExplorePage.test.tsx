@@ -1,6 +1,6 @@
 import { screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
 import type { RecordedCall } from "@/test/fakeHttpClient";
 import { FakeHttpClient } from "@/test/fakeHttpClient";
@@ -10,6 +10,7 @@ const hit = {
   asset_id: 3, card_id: 1, publication_id: 1, chunk_id: 9, score: 0.03, fqn: "lab_dw.vendas.ft_faturamento",
   business_name: "Faturamento por item", domain: "financeiro", visibility: "domain", trust_status: "not_validated",
   revision_no: 1, asset_version_no: 1, review_required: true, branches: ["text", "vector"], owner: "gerencia.comercial", subject: "Vendas",
+  summary: "Mostra o que foi faturado em cada nota fiscal.",
 };
 const metrics = { wall_ms: 80, llm_calls: 1, docs_retrieved: 2, context_chars: 900 };
 const option = (asset_id: number, business_name: string) => ({
@@ -42,12 +43,25 @@ describe("Explorar (busca)", () => {
     expect(result).toHaveAttribute("href", "/fichas/3");
     const item = result.closest("li") as HTMLElement;
     expect(within(item).getByText("Não validado")).toBeInTheDocument();
-    expect(within(item).getByText("Revisão pendente")).toBeInTheDocument();
+    expect(within(item).getByText("Pode estar desatualizada")).toBeInTheDocument();
+    // Descrição clara do que é a ficha, com assunto, área e responsável.
+    expect(within(item).getByText("Mostra o que foi faturado em cada nota fiscal.")).toBeInTheDocument();
+    expect(within(item).getByText("Vendas")).toBeInTheDocument();
+    expect(within(item).getByText("financeiro")).toBeInTheDocument();
+    expect(within(item).getByText("gerencia.comercial")).toBeInTheDocument();
     // Consumidor não vê nome técnico nem versões.
     expect(within(item).queryByText(hit.fqn)).not.toBeInTheDocument();
     expect(within(item).queryByText(/versão técnica/)).not.toBeInTheDocument();
     expect(screen.getByRole("status")).toHaveTextContent("Também procurei por: faturamento");
     expect(http.callsTo("GET", "/search")[0]?.options.query).toMatchObject({ q: "dinheiro que entrou", mode: "hybrid" });
+  });
+
+  it("ficha sem descrição diz isso em vez de ficar em branco", async () => {
+    const http = new FakeHttpClient({ "GET /search": { cache_hit: false, expanded_terms: [], added_terms: [], results: [{ ...hit, summary: "", owner: "" }] } });
+    renderApp({ path: "/explorar?q=faturamento", subject: "joao.consumidor", http });
+    const item = (await screen.findByRole("link", { name: "Faturamento por item" })).closest("li") as HTMLElement;
+    expect(within(item).getByText(/ainda não tem uma descrição/)).toBeInTheDocument();
+    expect(within(item).getByText("não informado")).toBeInTheDocument();
   });
 
   it("sem resultado oferece pedido de ajuda ao curador", async () => {
@@ -57,6 +71,20 @@ describe("Explorar (busca)", () => {
     await user.click(await screen.findByRole("button", { name: "Pedir ajuda a um curador" }));
     expect(await screen.findByText(/Pedido enviado/)).toBeInTheDocument();
     expect(http.callsTo("POST", "/help-requests")[0]?.options.json).toMatchObject({ question: "previsao do tempo" });
+  });
+
+  it("leva a busca para a aba Perguntar, que já envia", async () => {
+    const http = new FakeHttpClient({
+      "GET /search": { cache_hit: false, expanded_terms: [], added_terms: [], results: [hit] },
+      "GET /catalog/browse": browse,
+      "POST /ask": askResponder(() => ({ status: "no_evidence", answer: "Nada.", evidence_status: "none" })),
+    });
+    const user = userEvent.setup();
+    renderApp({ path: "/explorar?q=faturamento", subject: "joao.consumidor", http });
+
+    await user.click(await screen.findByRole("button", { name: "Perguntar “faturamento”" }));
+    expect(await screen.findByRole("tab", { name: "Perguntar", selected: true })).toBeInTheDocument();
+    await vi.waitFor(() => expect(http.callsTo("POST", "/ask")[0]?.options.json).toMatchObject({ question: "faturamento" }));
   });
 
   it("sugere termos enquanto a pessoa digita e busca ao escolher", async () => {
@@ -90,11 +118,39 @@ describe("Explorar (perguntas)", () => {
 
     await user.type(await screen.findByLabelText("O que você quer saber sobre os dados?"), "onde está o faturamento por nota?");
     await user.click(screen.getByRole("button", { name: "Perguntar" }));
-    expect(await screen.findByRole("link", { name: /C1/ })).toHaveAttribute("href", "/fichas/3");
+    // A marca [C1] vira atalho para a ficha dentro do próprio texto, além da lista de fontes.
+    expect(await screen.findByRole("link", { name: "Fonte C1: abrir ficha" })).toHaveAttribute("href", "/fichas/3");
+    expect(screen.getByText(/Use a ficha de faturamento/)).not.toHaveTextContent("[C1]");
+    expect(screen.getByText("Você perguntou:").closest("p")).toHaveTextContent("onde está o faturamento por nota?");
     await user.click(screen.getByRole("button", { name: /Não era isso/ }));
     expect(http.callsTo("POST", "/feedback")[0]?.options.json).toMatchObject({ helpful: false, question: "onde está o faturamento por nota?" });
     await user.click(await screen.findByRole("button", { name: "Pedir ajuda a um curador" }));
     expect(await screen.findByText(/Pedido enviado/)).toBeInTheDocument();
+  });
+
+  it("Enter envia a pergunta e Shift+Enter só quebra a linha", async () => {
+    const http = new FakeHttpClient({ "GET /catalog/browse": browse, "POST /ask": askResponder(() => ({ status: "no_evidence", answer: "Nada.", evidence_status: "none" })) });
+    const user = userEvent.setup();
+    renderApp({ path: "/explorar?aba=perguntar", subject: "joao.consumidor", http });
+
+    const input = await screen.findByLabelText("O que você quer saber sobre os dados?");
+    await user.type(input, "onde estão as vendas{Shift>}{Enter}{/Shift}por loja");
+    expect(http.callsTo("POST", "/ask")).toHaveLength(0);
+    await user.type(input, "{Enter}");
+    expect(http.callsTo("POST", "/ask")[0]?.options.json).toMatchObject({ question: "onde estão as vendas\npor loja" });
+  });
+
+  it("exemplo envia a pergunta com um clique e dá para recomeçar", async () => {
+    const http = new FakeHttpClient({ "GET /catalog/browse": browse, "POST /ask": askResponder(() => ({ status: "no_evidence", answer: "Nada.", evidence_status: "none" })) });
+    const user = userEvent.setup();
+    renderApp({ path: "/explorar?aba=perguntar", subject: "joao.consumidor", http });
+
+    await user.click(await screen.findByRole("button", { name: "onde encontro o faturamento por nota?" }));
+    expect(http.callsTo("POST", "/ask")[0]?.options.json).toMatchObject({ question: "onde encontro o faturamento por nota?" });
+    await user.click(await screen.findByRole("button", { name: "Fazer outra pergunta" }));
+    expect(screen.getByLabelText("O que você quer saber sobre os dados?")).toHaveValue("");
+    expect(screen.getByLabelText("O que você quer saber sobre os dados?")).toHaveFocus();
+    expect(screen.queryByText("Você perguntou:")).not.toBeInTheDocument();
   });
 
   it("pergunta vaga oferece opções e, ao escolher, pergunta de novo sem pedir esclarecimento", async () => {

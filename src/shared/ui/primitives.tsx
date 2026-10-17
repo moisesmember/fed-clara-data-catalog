@@ -1,11 +1,11 @@
 import {
   useId,
+  type ComponentProps,
   type ButtonHTMLAttributes,
   type InputHTMLAttributes,
   type ReactElement,
   type ReactNode,
   type SelectHTMLAttributes,
-  type TextareaHTMLAttributes,
 } from "react";
 
 import { Spinner } from "./states";
@@ -119,7 +119,7 @@ export function Select({ className, ...rest }: SelectHTMLAttributes<HTMLSelectEl
   return <select className={`ui-select ${className ?? ""}`.trim()} {...rest} />;
 }
 
-export function TextArea({ className, ...rest }: TextareaHTMLAttributes<HTMLTextAreaElement>) {
+export function TextArea({ className, ...rest }: ComponentProps<"textarea">) {
   return <textarea className={`ui-textarea ${className ?? ""}`.trim()} {...rest} />;
 }
 

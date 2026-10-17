@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import { useSearchParams } from "react-router";
 
 import type { AnswerSuggestion, SearchMode } from "@/api/types";
@@ -57,7 +57,13 @@ export function ExplorePage() {
         ]}
       />
       {tab === "buscar" ? (
-        <SearchTab query={params.get("q") ?? ""} mode={mode} onSubmit={(q) => update({ q })} onBrowse={() => update({ aba: "navegar" })} />
+        <SearchTab
+          query={params.get("q") ?? ""}
+          mode={mode}
+          onSubmit={(q) => update({ q })}
+          onBrowse={() => update({ aba: "navegar" })}
+          onAsk={(question) => update({ aba: "perguntar", pergunta: question })}
+        />
       ) : tab === "perguntar" ? (
         <AskTab key={params.get("pergunta") ?? ""} initialQuestion={params.get("pergunta") ?? ""} mode={mode} />
       ) : (
@@ -67,7 +73,16 @@ export function ExplorePage() {
   );
 }
 
-function SearchTab({ query, mode, onSubmit, onBrowse }: { query: string; mode: SearchMode; onSubmit: (query: string) => void; onBrowse: () => void }) {
+interface SearchTabProps {
+  query: string;
+  mode: SearchMode;
+  onSubmit: (query: string) => void;
+  onBrowse: () => void;
+  /** Leva a busca para a aba Perguntar, que já envia a pergunta. */
+  onAsk: (question: string) => void;
+}
+
+function SearchTab({ query, mode, onSubmit, onBrowse, onAsk }: SearchTabProps) {
   const search = useCatalogSearch(query, mode);
   const technical = useSession().permissions.can("read_metadata");
   return (
@@ -97,6 +112,12 @@ function SearchTab({ query, mode, onSubmit, onBrowse }: { query: string; mode: S
               </Button>
             </div>
           ) : null}
+          <p className="small muted ask-bridge">
+            Prefere uma explicação em texto?{" "}
+            <button type="button" className="link-button" onClick={() => onAsk(query.trim())}>
+              Perguntar “{query.trim()}”
+            </button>
+          </p>
         </>
       )}
     </div>
@@ -110,6 +131,7 @@ function AskTab({ initialQuestion, mode }: { initialQuestion: string; mode: Sear
   const browse = useCatalogBrowse();
   const technical = useSession().permissions.can("read_metadata");
   const autoAsked = useRef(false);
+  const input = useRef<HTMLTextAreaElement>(null);
   const examples = browse.data?.domains.flatMap((d) => d.example_questions).slice(0, 5) ?? [];
 
   const send = (text: string, allowClarification = true) => {
@@ -130,6 +152,26 @@ function AskTab({ initialQuestion, mode }: { initialQuestion: string; mode: Sear
     if (question.trim().length >= 3) send(question.trim());
   };
 
+  // Enter envia, como num chat; Shift+Enter quebra a linha.
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) {
+      event.preventDefault();
+      event.currentTarget.form?.requestSubmit();
+    }
+  };
+
+  const askExample = (example: string) => {
+    setQuestion(example);
+    send(example);
+  };
+
+  const startOver = () => {
+    setQuestion("");
+    setAsked("");
+    ask.reset();
+    input.current?.focus();
+  };
+
   const choose = (option: AnswerSuggestion) => {
     const refined = `${asked} — ${option.business_name}`;
     setQuestion(refined);
@@ -145,32 +187,51 @@ function AskTab({ initialQuestion, mode }: { initialQuestion: string; mode: Sear
           </label>
           <TextArea
             id="pergunta"
+            ref={input}
             value={question}
             maxLength={500}
+            rows={2}
             onChange={(event) => setQuestion(event.target.value)}
+            onKeyDown={onKeyDown}
+            aria-describedby="pergunta-dica"
             placeholder="Escreva como falaria com um colega. Ex.: onde vejo quanto cada loja vendeu?"
           />
           <div className="spread">
-            <span className="xsmall muted">{question.length}/500</span>
+            <span id="pergunta-dica" className="xsmall muted">
+              Enter envia · Shift+Enter quebra a linha · {question.length}/500
+            </span>
             <Button type="submit" variant="primary" loading={ask.isPending} disabled={question.trim().length < 3}>
               Perguntar
             </Button>
           </div>
         </form>
+        {asked && (ask.isPending || ask.data || ask.error) ? (
+          <div className="spread asked">
+            <p className="small">
+              <span className="muted">Você perguntou:</span> <strong>{asked}</strong>
+            </p>
+            {ask.isPending ? null : (
+              <Button size="sm" variant="ghost" onClick={startOver}>
+                Fazer outra pergunta
+              </Button>
+            )}
+          </div>
+        ) : null}
         {ask.isPending ? <Skeleton lines={4} /> : null}
-        {ask.error ? <ErrorState error={ask.error} /> : null}
+        {ask.error ? <ErrorState error={ask.error} onRetry={() => send(asked)} /> : null}
         {ask.data && !ask.isPending ? <AnswerView response={ask.data} question={asked} onChoose={choose} technical={technical} /> : null}
       </div>
       <Panel title="Como perguntar">
         <div className="stack-sm small">
           <p>Pergunte <strong>onde estão</strong> e <strong>o que significam</strong> os dados — não precisa saber o nome das tabelas.</p>
+          <p className="muted">A resposta usa só as fichas publicadas que você pode ver, e cada trecho aponta a ficha de onde veio.</p>
           <p className="muted">
             Eu não calculo valores (como “quanto vendemos ontem”), mas mostro onde está o dado e quem é o responsável.
           </p>
           <div className="stack-sm">
-            <span className="xsmall muted">Exemplos</span>
+            <span className="xsmall muted">Exemplos (clique para perguntar)</span>
             {(examples.length ? examples : FALLBACK_EXAMPLES).map((example) => (
-              <Button key={example} size="sm" variant="ghost" onClick={() => setQuestion(example)} style={{ justifyContent: "flex-start" }}>
+              <Button key={example} size="sm" variant="ghost" onClick={() => askExample(example)} disabled={ask.isPending} style={{ justifyContent: "flex-start" }}>
                 {example}
               </Button>
             ))}

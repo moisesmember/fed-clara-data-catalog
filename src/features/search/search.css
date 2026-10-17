@@ -33,7 +33,34 @@
 }
 .result__fqn {
   color: var(--text-muted);
-  font-size: var(--text-sm);
+}
+.result__summary {
+  margin: 0;
+  max-width: 72ch;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  line-clamp: 3;
+  overflow: hidden;
+}
+.result__facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-1) var(--space-4);
+  margin: 0;
+  font-size: var(--text-xs);
+  color: var(--text-muted);
+}
+.result__facts div {
+  display: flex;
+  gap: var(--space-1);
+}
+.result__facts dt::after {
+  content: ":";
+}
+.result__facts dd {
+  margin: 0;
+  color: var(--text);
 }
 
 .answer {
@@ -171,4 +198,26 @@
 .chip {
   border: 1px solid var(--border);
   border-radius: 999px;
+}
+
+/* Marca de fonte dentro do texto da resposta: leva direto à ficha citada. */
+.citation-mark {
+  display: inline-block;
+  margin-left: 2px;
+  padding: 0 var(--space-1);
+  border-radius: var(--radius-sm);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--text-xs);
+  font-weight: 700;
+  line-height: 1.5;
+  vertical-align: 0.15em;
+}
+.citation-mark:hover {
+  text-decoration: none;
+  background: var(--accent);
+  color: var(--accent-text);
+}
+.asked p {
+  margin: 0;
 }

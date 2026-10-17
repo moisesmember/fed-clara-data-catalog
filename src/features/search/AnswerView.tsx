@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-import type { AnswerSuggestion, AskResponse } from "@/api/types";
+import type { AnswerSuggestion, AskResponse, Citation } from "@/api/types";
 import { formatDuration } from "@/shared/format";
 import { Badge, Button } from "@/shared/ui/primitives";
 import { Alert } from "@/shared/ui/states";
@@ -54,6 +54,25 @@ function SuggestionList({ suggestions, onChoose }: { suggestions: AnswerSuggesti
         </li>
       ))}
     </ul>
+  );
+}
+
+/** Troca as marcas [C1] do texto por atalhos para a ficha citada; marcas sem citação somem. */
+function AnswerText({ text, citations }: { text: string; citations: Citation[] }) {
+  const byId = new Map(citations.map((citation) => [citation.context_id, citation]));
+  const parts = text.split(/\s*\[(C\d+)\]/);
+  return (
+    <p className="answer__text">
+      {parts.map((part, index) => {
+        if (index % 2 === 0) return part;
+        const citation = byId.get(part);
+        return citation ? (
+          <Link key={index} to={`/fichas/${citation.asset_id}`} className="citation-mark" aria-label={`Fonte ${part}: abrir ficha`}>
+            {part}
+          </Link>
+        ) : null;
+      })}
+    </p>
   );
 }
 
@@ -113,7 +132,7 @@ export function AnswerView({ response: raw, question, onChoose, technical = fals
         ) : null}
         {response.degraded.length ? <Badge tone="warning">Busca por significado indisponível — usei só a busca por palavras</Badge> : null}
       </div>
-      <p className="answer__text">{response.answer}</p>
+      <AnswerText text={response.answer ?? ""} citations={response.citations} />
       {response.citations.length ? (
         <div className="stack-sm">
           <h3 className="small">Fontes citadas</h3>

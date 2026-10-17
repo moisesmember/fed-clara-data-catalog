@@ -27,23 +27,45 @@ export function SearchResults({ hits, query, technical = false }: { hits: Search
             <div className="cluster">
               <TrustBadge status={hit.trust_status} />
               <VisibilityBadge visibility={hit.visibility} />
-              {hit.review_required ? <Badge tone="warning">Revisão pendente</Badge> : null}
+              {hit.review_required ? (
+                <Badge tone="warning" title="A origem mudou depois da publicação; um curador ainda vai revisar a ficha.">
+                  Pode estar desatualizada
+                </Badge>
+              ) : null}
             </div>
           </div>
-          {technical ? <code className="result__fqn">{hit.fqn}</code> : null}
-          <div className="cluster xsmall muted">
-            <span>Domínio {hit.domain}</span>
-            {technical ? (
-              <>
-                <span aria-hidden="true">·</span>
-                <span>
-                  Publicação r{hit.revision_no} · versão técnica v{hit.asset_version_no}
-                </span>
-                <span aria-hidden="true">·</span>
-                <span>Encontrado por {hit.branches.map((b) => BRANCH_LABEL[b] ?? b).join(" + ")}</span>
-              </>
+          {hit.summary ? (
+            <p className="result__summary">{hit.summary}</p>
+          ) : (
+            <p className="result__summary muted">Esta ficha ainda não tem uma descrição. Abra para ver as colunas e o responsável.</p>
+          )}
+          <dl className="result__facts">
+            {hit.subject ? (
+              <div>
+                <dt>Assunto</dt>
+                <dd>{hit.subject}</dd>
+              </div>
             ) : null}
-          </div>
+            <div>
+              <dt>Área</dt>
+              <dd>{hit.domain}</dd>
+            </div>
+            <div>
+              <dt>Responsável</dt>
+              <dd>{hit.owner || "não informado"}</dd>
+            </div>
+          </dl>
+          {technical ? (
+            <div className="cluster xsmall muted">
+              <code className="result__fqn">{hit.fqn}</code>
+              <span aria-hidden="true">·</span>
+              <span>
+                Publicação r{hit.revision_no} · versão técnica v{hit.asset_version_no}
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>Encontrado por {hit.branches.map((b) => BRANCH_LABEL[b] ?? b).join(" + ")}</span>
+            </div>
+          ) : null}
         </li>
       ))}
     </ol>
