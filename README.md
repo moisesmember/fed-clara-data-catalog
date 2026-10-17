@@ -1,5 +1,31 @@
 # Clara Data Catalog — Frontend
 
+## Visão de portfólio
+
+**Problema:** ajudar pessoas a encontrar e compreender dados, com contexto de negócio e revisão humana das sugestões de IA.
+
+**Papel deste repositório:** interface web para descoberta, consulta de fichas, curadoria e administração de fontes. O backend é um projeto separado.
+
+**Disponibilidade:** este frontend é público, mas o backend está privado. As instruções de execução integrada abaixo exigem acesso autorizado a ele. Este repositório ainda não oferece uma demonstração autônoma com dados fictícios.
+
+### Fluxo que o projeto apresenta
+
+1. O consumidor busca dados ou faz uma pergunta em linguagem de negócio.
+2. A interface apresenta fichas e respostas fornecidas pela API.
+3. O curador revisa propostas e edita informações.
+4. Os papéis e contratos do backend orientam as ações disponíveis.
+
+### Evidências técnicas
+
+- [Testes e fixtures](src/test): suporte aos cenários de teste da interface; não constituem um modo público de demonstração.
+- [Código das funcionalidades](src/features): organização por áreas do produto.
+- Testes de contrato verificam a compatibilidade com o OpenAPI do backend.
+- Autenticação de produção requer um provedor real; os headers de desenvolvimento não a substituem.
+
+### Próxima entrega de portfólio
+
+Preparar um modo de demonstração com dados fictícios, capturas das telas e um vídeo do fluxo de descoberta e curadoria. Esses materiais ainda não estão publicados neste repositório.
+
 Interface web do [Clara Data Catalog](../clara-data-catalog): descoberta de dados em linguagem de
 negócio, perguntas com respostas fundamentadas, curadoria assistida por IA com revisão humana e
 administração de fontes. Projeto **isolado**: não compartilha código com o backend; a integração
